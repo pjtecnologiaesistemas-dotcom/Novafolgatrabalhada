@@ -6690,6 +6690,9 @@ var FIRESTORE_DOC_ID     = 'dados';
 
   /* ── Verifica pendências ───────────────────────────────── */
   function getPendencias() {
+    /* Lembrete de bicos só é exibido durante lançamentos noturnos */
+    if (turnoAtual() !== 'noite') return [];
+
     var cfg       = loadConfig();
     var registros = getBicoRegistros();
     var pendencias = [];
