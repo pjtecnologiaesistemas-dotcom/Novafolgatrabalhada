@@ -1558,7 +1558,7 @@
     }
     .tab-nav {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(7, 1fr);
       gap: 8px;
     }
     .tab-btn { font-size: .72rem; padding: 11px 4px; }
@@ -1598,10 +1598,10 @@
       margin: 20px auto 0;
     }
 
-    /* Tab nav — 6 colunas numa linha */
+    /* Tab nav — 7 colunas numa linha */
     .tab-nav {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(7, 1fr);
       gap: 10px;
       margin-bottom: 20px;
     }
@@ -1852,6 +1852,7 @@
     <button class="tab-btn" data-tab="tab-geral" style="position:relative;">&#x1F30D; Geral<span style="position:absolute;top:-5px;right:-3px;background:var(--accent2);color:#0d1117;font-size:.52rem;font-weight:800;padding:2px 5px;border-radius:8px;letter-spacing:.3px;">NEW</span></button>
     <button class="tab-btn" data-tab="tab-historico">&#x1F4DC; Histórico</button>
     <button class="tab-btn" data-tab="tab-bico">&#x1F4A0; Bico Fixo</button>
+    <button class="tab-btn" data-tab="tab-pagamentos">&#x1F4B3; Pagamentos</button>
   </div>
 
   <!-- ABA: NOVA FT -->
@@ -1882,6 +1883,7 @@
             <option value="">-- Selecione --</option>
             <option>Afastamento</option>
             <option>Atestado</option>
+            <option>Bico Fixo</option>
             <option>Cobertura de Férias</option>
             <option>Extra</option>
             <option>Falta de Efetivo</option>
@@ -2309,59 +2311,6 @@
       Use a aba <strong>Cadastros</strong> para gerenciar postos e colaboradores.
     </div>
 
-    <!-- ── Card: Postos Monitorados ── -->
-    <div id="bico-postos-monitorados-card" style="
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      padding:16px 18px;
-      margin-bottom:16px;
-      box-shadow:var(--shadow);
-    ">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:1rem;">🔔</span>
-          <span style="font-family:'Exo 2',sans-serif;font-size:.78rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--accent3);">Postos Monitorados</span>
-        </div>
-        <button id="btn-bico-add-posto-monitorado" style="
-          display:inline-flex;align-items:center;gap:5px;
-          border:none;border-radius:9px;
-          background:linear-gradient(135deg,var(--accent3),#1a6fc4);
-          color:#fff;
-          font-family:'Exo 2',sans-serif;font-size:.72rem;font-weight:700;
-          letter-spacing:.3px;padding:7px 14px;cursor:pointer;
-          transition:opacity .2s,transform .15s;white-space:nowrap;flex-shrink:0;
-        ">&#x2795; Novo Posto</button>
-      </div>
-
-      <!-- Lista dos postos monitorados -->
-      <div id="bico-postos-monitorados-list" style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px;"></div>
-
-      <!-- Input inline para adicionar novo posto monitorado -->
-      <div id="bico-add-posto-mon-wrap" style="display:none;margin-bottom:12px;">
-        <div style="display:flex;gap:6px;">
-          <input type="text" id="bico-add-posto-mon-input" placeholder="Nome do posto a monitorar…" maxlength="80" style="
-            flex:1;background:var(--input-bg);border:1.5px solid var(--accent3);
-            border-radius:10px;color:var(--text);font-family:'Nunito',sans-serif;
-            font-size:.88rem;padding:9px 14px;outline:none;
-            box-shadow:0 0 0 3px rgba(69,170,242,.12);
-          ">
-          <button type="button" id="btn-bico-add-posto-mon-salvar" style="
-            border:none;border-radius:10px;
-            background:linear-gradient(135deg,var(--accent3),#1a6fc4);
-            color:#fff;font-family:'Exo 2',sans-serif;font-size:.82rem;font-weight:700;
-            padding:9px 16px;cursor:pointer;white-space:nowrap;flex-shrink:0;
-            transition:opacity .2s,transform .15s;
-          ">✔ Salvar</button>
-          <button type="button" id="btn-bico-add-posto-mon-cancelar" style="
-            border:1.5px solid var(--border);border-radius:10px;background:transparent;
-            color:var(--muted);font-family:'Exo 2',sans-serif;font-size:.82rem;font-weight:700;
-            padding:9px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0;
-          ">✕</button>
-        </div>
-      </div>
-    </div>
-
     <div class="form-card">
       <form id="bicoForm" novalidate>
 
@@ -2460,9 +2409,172 @@
 
       </form>
     </div>
+
+    <!-- ── Card: Postos Monitorados ── -->
+    <div id="bico-postos-monitorados-card" style="
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:16px 18px;
+      margin-top:16px;
+      box-shadow:var(--shadow);
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1rem;">🔔</span>
+          <span style="font-family:'Exo 2',sans-serif;font-size:.78rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--accent3);">Postos Monitorados</span>
+        </div>
+        <button id="btn-bico-add-posto-monitorado" style="
+          display:inline-flex;align-items:center;gap:5px;
+          border:none;border-radius:9px;
+          background:linear-gradient(135deg,var(--accent3),#1a6fc4);
+          color:#fff;
+          font-family:'Exo 2',sans-serif;font-size:.72rem;font-weight:700;
+          letter-spacing:.3px;padding:7px 14px;cursor:pointer;
+          transition:opacity .2s,transform .15s;white-space:nowrap;flex-shrink:0;
+        ">&#x2795; Novo Posto</button>
+      </div>
+
+      <!-- Lista dos postos monitorados -->
+      <div id="bico-postos-monitorados-list" style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px;"></div>
+
+      <!-- Input inline para adicionar novo posto monitorado -->
+      <div id="bico-add-posto-mon-wrap" style="display:none;margin-bottom:12px;">
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="bico-add-posto-mon-input" placeholder="Nome do posto a monitorar…" maxlength="80" style="
+            flex:1;background:var(--input-bg);border:1.5px solid var(--accent3);
+            border-radius:10px;color:var(--text);font-family:'Nunito',sans-serif;
+            font-size:.88rem;padding:9px 14px;outline:none;
+            box-shadow:0 0 0 3px rgba(69,170,242,.12);
+          ">
+          <button type="button" id="btn-bico-add-posto-mon-salvar" style="
+            border:none;border-radius:10px;
+            background:linear-gradient(135deg,var(--accent3),#1a6fc4);
+            color:#fff;font-family:'Exo 2',sans-serif;font-size:.82rem;font-weight:700;
+            padding:9px 16px;cursor:pointer;white-space:nowrap;flex-shrink:0;
+            transition:opacity .2s,transform .15s;
+          ">✔ Salvar</button>
+          <button type="button" id="btn-bico-add-posto-mon-cancelar" style="
+            border:1.5px solid var(--border);border-radius:10px;background:transparent;
+            color:var(--muted);font-family:'Exo 2',sans-serif;font-size:.82rem;font-weight:700;
+            padding:9px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0;
+          ">✕</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-</div>
+  <!-- ABA: PAGAMENTOS -->
+  <div class="tab-panel hidden" id="tab-pagamentos">
+
+    <div class="notice" style="border-color:rgba(38,222,129,.4);background:rgba(38,222,129,.07);">
+      <strong>&#x1F4B3; Pagamentos:</strong> Visualize e filtre todos os lançamentos por colaborador, posto ou tipo.
+      Selecione um colaborador para gerar o <strong>recibo consolidado</strong> com o total a pagar.
+    </div>
+
+    <!-- Filtros -->
+    <div class="dash-filter-card" style="margin-bottom:14px;">
+      <div class="dash-filter-label" style="margin-bottom:10px;">&#x1F50D; Buscar / Filtrar</div>
+
+      <!-- Busca texto livre -->
+      <div class="hist-search-wrap" style="margin-bottom:12px;">
+        <span class="hist-search-icon">🔍</span>
+        <input type="text" class="hist-search-input" id="pagSearch"
+               placeholder="Buscar por nome, posto ou colaborador…">
+      </div>
+
+      <!-- Filtros por tipo -->
+      <div class="dash-filter-group" style="margin-bottom:12px;">
+        <div class="dash-filter-label" style="margin-bottom:7px;">&#x1F4C2; Tipo de lançamento</div>
+        <div class="dash-pill-row">
+          <button class="dash-pill active" data-pag-fonte="todos">&#x1F4CB; Todos</button>
+          <button class="dash-pill" data-pag-fonte="ft">&#x1F4CB; FT</button>
+          <button class="dash-pill" data-pag-fonte="bico">&#x1F4A0; Bico Fixo</button>
+        </div>
+      </div>
+
+      <!-- Filtros em linha: Colaborador + Posto -->
+      <div class="dash-filter-row" style="gap:10px;">
+        <div class="dash-filter-group" style="flex:1;">
+          <div class="dash-filter-label" style="margin-bottom:6px;">&#x1F464; Colaborador</div>
+          <select id="pagSelectColaborador" class="dash-select">
+            <option value="">— Todos —</option>
+          </select>
+        </div>
+        <div class="dash-filter-group" style="flex:1;">
+          <div class="dash-filter-label" style="margin-bottom:6px;">&#x1F4CD; Posto</div>
+          <select id="pagSelectPosto" class="dash-select">
+            <option value="">— Todos —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Filtro período -->
+      <div class="dash-filter-group" style="margin-top:12px;">
+        <div class="dash-filter-label" style="margin-bottom:7px;">&#x1F4C5; Período <span id="pag-date-active-badge" style="display:none;background:rgba(69,170,242,.18);color:var(--accent3);font-size:.6rem;padding:2px 8px;border-radius:10px;margin-left:6px;border:1px solid rgba(69,170,242,.35);">ATIVO</span></div>
+        <div class="dash-pill-row" style="margin-bottom:8px;">
+          <button class="dash-pill active" data-pag-period="todos">Todos</button>
+          <button class="dash-pill" data-pag-period="mes">Este mês</button>
+          <button class="dash-pill" data-pag-period="ano">Este ano</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div style="flex:1;min-width:110px;">
+            <div style="font-size:.65rem;color:var(--muted);margin-bottom:4px;letter-spacing:.5px;">DE</div>
+            <input type="date" id="pagDateDe" class="dash-select" style="width:100%;">
+          </div>
+          <div style="flex:1;min-width:110px;">
+            <div style="font-size:.65rem;color:var(--muted);margin-bottom:4px;letter-spacing:.5px;">ATÉ</div>
+            <input type="date" id="pagDateAte" class="dash-select" style="width:100%;">
+          </div>
+          <button id="btnPagDateClear" title="Limpar filtro" style="display:none;border:none;background:rgba(252,92,101,.15);color:var(--danger);border-radius:8px;padding:8px 12px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .2s;">&#x2715; Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi-card kpi-green">
+        <div class="kpi-value" id="pag-kpi-total">0</div>
+        <div class="kpi-label">Lançamentos</div>
+      </div>
+      <div class="kpi-card kpi-amber">
+        <div class="kpi-value" id="pag-kpi-valor">R$ 0</div>
+        <div class="kpi-label">Total a Pagar</div>
+      </div>
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-value" id="pag-kpi-colaboradores">0</div>
+        <div class="kpi-label">Colaboradores</div>
+      </div>
+    </div>
+
+    <!-- Botão gerar recibo consolidado (visível quando há colaborador filtrado) -->
+    <div id="pag-recibo-wrap" style="display:none;margin-bottom:14px;">
+      <button id="btnPagReciboConsolidado" style="
+        width:100%;border:none;border-radius:12px;
+        background:linear-gradient(135deg,var(--accent2),#19a85a);
+        color:#0d1117;font-family:'Exo 2',sans-serif;font-size:.95rem;font-weight:800;
+        padding:16px 20px;cursor:pointer;
+        box-shadow:0 4px 20px rgba(38,222,129,.35);
+        transition:box-shadow .2s,transform .15s;
+        display:flex;align-items:center;justify-content:center;gap:10px;
+        letter-spacing:.4px;text-transform:uppercase;
+      ">
+        <span style="font-size:1.3rem;">&#x1F9FE;</span>
+        <span id="pag-recibo-btn-label">Gerar Recibo Consolidado</span>
+      </button>
+    </div>
+
+    <!-- Contagem -->
+    <div class="hist-count" id="pagCount" style="margin-bottom:10px;"></div>
+
+    <!-- Lista de lançamentos -->
+    <div id="pagList" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="dash-empty">Nenhum lançamento encontrado.</div>
+    </div>
+
+  </div>
+
+</div><!-- /tabs-wrapper -->
 
 <!-- Modal de edição de Bico Fixo -->
 <div class="modal-edit-overlay" id="modalEditBico">
@@ -2560,6 +2672,7 @@
       <select id="edit-motivo">
         <option>Afastamento</option>
         <option>Atestado</option>
+        <option>Bico Fixo</option>
         <option>Cobertura de Férias</option>
         <option>Extra</option>
         <option>Falta de Efetivo</option>
@@ -3004,32 +3117,67 @@
       outroInput.value = '';
     }
 
-    // Valor efetivo para lógica de "quem faltou"
-    var motivoEfetivo = (motivo === '__outro__') ? (outroInput.value.trim() || '') : motivo;
-
     if (motivo && motivo !== '__outro__' && MOTIVOS_COM_FALTOU.indexOf(motivo) !== -1) {
       blockFaltou.classList.remove('hidden');
+
       if (motivo === 'Remanejamento Interno') {
         labelFaltou.innerHTML = '<span class="dot bg-danger"></span>🔀 Quem foi remanejado';
         hintFaltou.textContent = '';
         hintFaltou.classList.remove('visible');
         selFaltou.required = true;
+        // Popula select normal (só colaboradores)
+        fillSelectFaltou('quemFaltou', colaboradores, false);
+
       } else if (motivo === 'Cobertura de Férias') {
-        labelFaltou.innerHTML = '<span class="dot bg-danger"></span>🚨 Quem faltou';
-        selFaltou.required = false;
-        hintFaltou.textContent = 'Opcional para cobertura de férias';
+        labelFaltou.innerHTML = '<span class="dot bg-amber"></span>🏖️ Quem está de férias';
+        selFaltou.required = true;
+        hintFaltou.textContent = 'Selecione quem está de férias e está sendo coberto';
         hintFaltou.classList.add('visible');
+        // Popula select com opção "Férias" no topo + colaboradores
+        fillSelectFaltou('quemFaltou', colaboradores, true, selFaltou.value);
+
       } else {
         labelFaltou.innerHTML = '<span class="dot bg-danger"></span>🚨 Quem faltou';
         selFaltou.required = true;
         hintFaltou.textContent = '';
         hintFaltou.classList.remove('visible');
+        // Popula select normal (só colaboradores)
+        fillSelectFaltou('quemFaltou', colaboradores, false);
       }
     } else {
       blockFaltou.classList.add('hidden');
       selFaltou.required = false;
       selFaltou.value = '';
     }
+  }
+
+  // Preenche o select de "quem faltou" / "quem está de férias"
+  // Se comFerias=true, adiciona opção especial "🏖️ Férias" no topo
+  function fillSelectFaltou(id, items, comFerias, valorAtual) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    var prev = valorAtual !== undefined ? valorAtual : sel.value;
+    sel.innerHTML = '<option value="">-- Selecione --</option>';
+    if (comFerias) {
+      var optFerias = document.createElement('option');
+      optFerias.value = '🏖️ Férias';
+      optFerias.textContent = '🏖️ Férias (sem colaborador específico)';
+      optFerias.style.fontWeight = '700';
+      optFerias.style.color = '#f7b731';
+      sel.appendChild(optFerias);
+      // separador visual
+      var sep = document.createElement('option');
+      sep.disabled = true;
+      sep.textContent = '──────────────────';
+      sel.appendChild(sep);
+    }
+    sortAlpha(items).forEach(function(item) {
+      var opt = document.createElement('option');
+      opt.value = item.nome;
+      opt.textContent = item.nome;
+      sel.appendChild(opt);
+    });
+    if (prev) sel.value = prev;
   }
 
   // ── Envio do formulário ──────────────────────────
@@ -3615,10 +3763,12 @@
     };
 
     fillEditSel('edit-substituto', colaboradores, ft.substituto);
-    fillEditSel('edit-quemFaltou', colaboradores, ft.quemFaltou);
+    // quemFaltou será populado pelo syncEditMotivoBlock com o valor correto
+    // guardamos o valor salvo para restaurar após a chamada
+    var _savedQuemFaltou = ft.quemFaltou || '';
 
     // Preenche motivo — se não está na lista padrão, usa opção "Outro"
-    var motivosPadrao = ['Afastamento','Atestado','Cobertura de Férias','Extra','Falta de Efetivo','Folga do Vigia','Remanejamento Interno','Suspensão','Treinamento'];
+    var motivosPadrao = ['Afastamento','Atestado','Bico Fixo','Cobertura de Férias','Extra','Falta de Efetivo','Folga do Vigia','Remanejamento Interno','Suspensão','Treinamento'];
     var motivoVal     = ft.motivo || '';
     var editMotivoSel = document.getElementById('edit-motivo');
     var outroWrapEdit = document.getElementById('motivo-outro-wrap-edit');
@@ -3638,11 +3788,13 @@
     document.getElementById('edit-dataHora').value   = ft.dataHora ? ft.dataHora.slice(0,16) : '';
     document.getElementById('edit-observacao').value = ft.observacao || '';
 
-    syncEditMotivoBlock();
+    // syncEditMotivoBlock popula o select de quemFaltou (com ou sem opção Férias)
+    // e restaura o valor salvo
+    syncEditMotivoBlock(_savedQuemFaltou);
     document.getElementById('modalEditFT').classList.add('show');
   }
 
-  function syncEditMotivoBlock() {
+  function syncEditMotivoBlock(valorParaRestaurar) {
     var motivoSel  = document.getElementById('edit-motivo').value;
     var outroWrap  = document.getElementById('motivo-outro-wrap-edit');
     var outroInput = document.getElementById('motivo-outro-edit');
@@ -3659,17 +3811,22 @@
     }
 
     var motivo = (motivoSel === '__outro__') ? '' : motivoSel;
+    var valRestore = valorParaRestaurar !== undefined ? valorParaRestaurar : sel.value;
+
     if (motivo && MOTIVOS_COM_FALTOU.indexOf(motivo) !== -1) {
       block.style.display = '';
       if (motivo === 'Remanejamento Interno') {
         if (label) label.innerHTML = '<span class="dot bg-danger"></span>🔀 Quem foi remanejado';
         sel.required = true;
+        fillSelectFaltou('edit-quemFaltou', colaboradores, false, valRestore);
       } else if (motivo === 'Cobertura de Férias') {
-        if (label) label.innerHTML = '<span class="dot bg-danger"></span>🚨 Quem faltou';
-        sel.required = false;
+        if (label) label.innerHTML = '<span class="dot bg-amber"></span>🏖️ Quem está de férias';
+        sel.required = true;
+        fillSelectFaltou('edit-quemFaltou', colaboradores, true, valRestore);
       } else {
         if (label) label.innerHTML = '<span class="dot bg-danger"></span>🚨 Quem faltou';
         sel.required = true;
+        fillSelectFaltou('edit-quemFaltou', colaboradores, false, valRestore);
       }
     } else {
       block.style.display = 'none';
@@ -3768,6 +3925,10 @@
     }
     if (tabId === 'tab-bico') {
       fillBicoSelects();
+    }
+    if (tabId === 'tab-pagamentos') {
+      fillPagSelects();
+      setTimeout(renderPagamentos, 50);
     }
   }
 
@@ -5150,6 +5311,9 @@
 
     // Inicializa horários customizados
     initHorariosCustom();
+
+    // Inicializa aba Pagamentos
+    initPagamentos();
   }
 
   if (document.readyState === 'loading') {
@@ -5159,6 +5323,474 @@
   }
 
   // ── Expõe showToast para o módulo de sync ──────
+
+  // ════════════════════════════════════════════════
+  // ABA PAGAMENTOS — Lógica completa
+  // ════════════════════════════════════════════════
+
+  var pagFonte   = 'todos';
+  var pagPeriod  = 'todos';
+  var pagColabFiltro = '';
+  var pagPostoFiltro = '';
+  var pagQuery   = '';
+  var pagDateDe  = '';
+  var pagDateAte = '';
+
+  function getLancamentosTodos() {
+    var fts   = (function() { try { return JSON.parse(localStorage.getItem('ft_registros') || '[]'); } catch(e) { return []; } })();
+    var bicos = (function() { try { return JSON.parse(localStorage.getItem('ft_bico_fixo') || '[]'); } catch(e) { return []; } })();
+    var todos = fts.map(function(r) { return Object.assign({}, r, { tipo: 'ft', _nomeColab: r.substituto || '' }); })
+               .concat(bicos.map(function(r) { return Object.assign({}, r, { tipo: 'bico', _nomeColab: r.colaborador || '' }); }));
+    todos.sort(function(a, b) {
+      return new Date(b.dataHora || b.criadoEm) - new Date(a.dataHora || a.criadoEm);
+    });
+    return todos;
+  }
+
+  function filterPagamentos(todos) {
+    return todos.filter(function(r) {
+      // Fonte
+      if (pagFonte === 'ft'   && r.tipo !== 'ft')   return false;
+      if (pagFonte === 'bico' && r.tipo !== 'bico') return false;
+
+      // Colaborador select
+      if (pagColabFiltro && r._nomeColab !== pagColabFiltro) return false;
+
+      // Posto select
+      if (pagPostoFiltro && r.posto !== pagPostoFiltro) return false;
+
+      // Período
+      var d       = new Date(r.dataHora || r.criadoEm);
+      var dateStr = d.toISOString().slice(0, 10);
+      if (pagDateDe || pagDateAte) {
+        if (pagDateDe && dateStr < pagDateDe) return false;
+        if (pagDateAte && dateStr > pagDateAte) return false;
+      } else if (pagPeriod !== 'todos') {
+        var now = new Date();
+        if (pagPeriod === 'mes' && (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth())) return false;
+        if (pagPeriod === 'ano' && d.getFullYear() !== now.getFullYear()) return false;
+      }
+
+      // Busca texto livre
+      if (pagQuery) {
+        var q = pagQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        var haystack = [r._nomeColab, r.posto, r.motivo, r.horario].join(' ')
+          .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (haystack.indexOf(q) === -1) return false;
+      }
+
+      return true;
+    });
+  }
+
+  function fillPagSelects() {
+    var selColab = document.getElementById('pagSelectColaborador');
+    var selPosto = document.getElementById('pagSelectPosto');
+    if (!selColab || !selPosto) return;
+
+    var prevColab = selColab.value;
+    var prevPosto = selPosto.value;
+
+    selColab.innerHTML = '<option value="">— Todos —</option>';
+    selPosto.innerHTML = '<option value="">— Todos —</option>';
+
+    sortAlpha(colaboradores).forEach(function(c) {
+      var o = document.createElement('option');
+      o.value = o.textContent = c.nome;
+      if (c.nome === prevColab) o.selected = true;
+      selColab.appendChild(o);
+    });
+    sortAlpha(postos).forEach(function(p) {
+      var o = document.createElement('option');
+      o.value = o.textContent = p.nome;
+      if (p.nome === prevPosto) o.selected = true;
+      selPosto.appendChild(o);
+    });
+  }
+
+  function renderPagamentos() {
+    var todos     = getLancamentosTodos();
+    var filtrados = filterPagamentos(todos);
+    var list      = document.getElementById('pagList');
+    var countEl   = document.getElementById('pagCount');
+    if (!list) return;
+
+    // KPIs
+    var totalValor = filtrados.reduce(function(s, r) { return s + (r.valor || 0); }, 0);
+    var colabSet   = {};
+    filtrados.forEach(function(r) { if (r._nomeColab) colabSet[r._nomeColab] = true; });
+    var numColabs  = Object.keys(colabSet).length;
+
+    var kpiEl = document.getElementById('pag-kpi-total');
+    var kpiValEl = document.getElementById('pag-kpi-valor');
+    var kpiColEl = document.getElementById('pag-kpi-colaboradores');
+    if (kpiEl)    kpiEl.textContent    = filtrados.length;
+    if (kpiValEl) kpiValEl.textContent = 'R$ ' + totalValor.toFixed(2).replace('.', ',');
+    if (kpiColEl) kpiColEl.textContent = numColabs;
+
+    // Botão recibo consolidado
+    var reciboWrap = document.getElementById('pag-recibo-wrap');
+    var reciboBtnLabel = document.getElementById('pag-recibo-btn-label');
+    if (reciboWrap) {
+      var mostrarRecibo = pagColabFiltro && filtrados.length > 0;
+      reciboWrap.style.display = mostrarRecibo ? '' : 'none';
+      if (mostrarRecibo && reciboBtnLabel) {
+        reciboBtnLabel.textContent = 'Gerar Recibo Consolidado — ' + pagColabFiltro +
+          ' (' + filtrados.length + ' lançamento' + (filtrados.length !== 1 ? 's' : '') +
+          ' · R$ ' + totalValor.toFixed(2).replace('.', ',') + ')';
+      }
+    }
+
+    // Contador
+    if (countEl) {
+      countEl.innerHTML = 'Exibindo <span>' + filtrados.length + '</span> lançamento' +
+        (filtrados.length !== 1 ? 's' : '') +
+        (totalValor > 0 ? ' — Total: <span>R$ ' + totalValor.toFixed(2).replace('.', ',') + '</span>' : '');
+    }
+
+    if (!filtrados.length) {
+      list.innerHTML = '<div class="dash-empty">Nenhum lançamento encontrado com os filtros selecionados.</div>';
+      return;
+    }
+
+    // Agrupa por colaborador para exibição
+    var grupos = {};
+    filtrados.forEach(function(r) {
+      var nome = r._nomeColab || '(sem nome)';
+      if (!grupos[nome]) grupos[nome] = [];
+      grupos[nome].push(r);
+    });
+
+    var html = '';
+    Object.keys(grupos).sort(function(a, b) {
+      return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
+    }).forEach(function(nomeColab) {
+      var items = grupos[nomeColab];
+      var totalColab = items.reduce(function(s, r) { return s + (r.valor || 0); }, 0);
+
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);">';
+      // Cabeçalho do colaborador
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(38,222,129,.07);border-bottom:1px solid var(--border);gap:10px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:1.1rem;">&#x1F464;</span>' +
+          '<span style="font-family:\'Exo 2\',sans-serif;font-size:.92rem;font-weight:800;color:var(--text);">' + escHtml(nomeColab) + '</span>' +
+          '<span style="background:rgba(38,222,129,.15);border:1px solid rgba(38,222,129,.3);border-radius:10px;font-size:.68rem;font-weight:700;color:var(--accent2);padding:2px 8px;">' + items.length + ' lançamento' + (items.length !== 1 ? 's' : '') + '</span>' +
+        '</div>' +
+        '<span style="font-family:\'Exo 2\',sans-serif;font-size:.95rem;font-weight:800;color:var(--accent2);">R$ ' + totalColab.toFixed(2).replace('.', ',') + '</span>' +
+        '</div>';
+
+      // Lançamentos do colaborador
+      items.forEach(function(r) {
+        var isBico   = r.tipo === 'bico';
+        var dtStr    = r.dataHora ? new Date(r.dataHora).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+        var tipoTag  = isBico
+          ? '<span style="background:rgba(165,94,234,.15);border:1px solid rgba(165,94,234,.35);border-radius:8px;font-size:.65rem;font-weight:700;color:#a55eea;padding:2px 7px;">&#x1F4A0; Bico</span>'
+          : '<span style="background:rgba(69,170,242,.12);border:1px solid rgba(69,170,242,.3);border-radius:8px;font-size:.65rem;font-weight:700;color:var(--accent3);padding:2px 7px;">&#x1F4CB; FT</span>';
+        var motivoTxt = isBico ? (r.motivo || 'Bico Fixo') : (r.motivo || '—');
+
+        // Linha extra com quem faltou / está de férias / foi suspenso
+        var ausenteHtml = '';
+        if (!isBico && r.quemFaltou) {
+          var ausenteIcon = '👤';
+          var ausentePrefixo = 'Ausente';
+          if (r.motivo === 'Cobertura de Férias') {
+            ausenteIcon = '🏖️';
+            ausentePrefixo = 'De férias';
+          } else if (r.motivo === 'Suspensão') {
+            ausenteIcon = '🚫';
+            ausentePrefixo = 'Suspenso';
+          } else if (r.motivo === 'Atestado') {
+            ausenteIcon = '🏥';
+            ausentePrefixo = 'Atestado';
+          } else if (r.motivo === 'Afastamento') {
+            ausenteIcon = '📋';
+            ausentePrefixo = 'Afastado';
+          } else if (r.motivo === 'Remanejamento Interno') {
+            ausenteIcon = '🔀';
+            ausentePrefixo = 'Remanejado';
+          } else if (r.motivo === 'Folga do Vigia') {
+            ausenteIcon = '🌙';
+            ausentePrefixo = 'De folga';
+          }
+          ausenteHtml = '<span style="font-size:.73rem;color:var(--accent1);font-weight:600;">' +
+            ausenteIcon + ' ' + ausentePrefixo + ': ' + escHtml(r.quemFaltou) + '</span>';
+        }
+
+        html += '<div style="padding:11px 16px;border-bottom:1px solid rgba(42,51,71,.5);display:flex;align-items:flex-start;gap:10px;">' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">' +
+              tipoTag +
+              '<span style="font-size:.82rem;font-weight:700;color:var(--text);">' + escHtml(r.posto || '—') + '</span>' +
+              '<span style="font-size:.75rem;color:var(--muted);">•</span>' +
+              '<span style="font-size:.78rem;color:var(--muted);">' + escHtml(motivoTxt) + '</span>' +
+            '</div>' +
+            (ausenteHtml ? '<div style="margin-bottom:4px;">' + ausenteHtml + '</div>' : '') +
+            '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+              '<span style="font-size:.75rem;color:var(--muted);">&#x1F550; ' + escHtml(r.horario || '—') + '</span>' +
+              '<span style="font-size:.75rem;color:var(--muted);">&#x1F4C5; ' + dtStr + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<span style="font-family:\'Exo 2\',sans-serif;font-size:.9rem;font-weight:800;color:var(--accent2);white-space:nowrap;">R$ ' + (r.valor || 0).toFixed(2).replace('.', ',') + '</span>' +
+          '</div>';
+      });
+
+      html += '</div>';
+    });
+
+    list.innerHTML = html;
+  }
+
+  function gerarReciboPagamentos() {
+    var jsPDF = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPDF) { showToast('❌ Biblioteca PDF não carregada.', 'error'); return; }
+
+    var todos     = getLancamentosTodos();
+    var filtrados = filterPagamentos(todos);
+    if (!filtrados.length) { showToast('⚠️ Nenhum lançamento para gerar recibo.', 'error'); return; }
+
+    var colabNome  = pagColabFiltro || 'Colaborador';
+    var totalValor = filtrados.reduce(function(s, r) { return s + (r.valor || 0); }, 0);
+    var dataHoje   = new Date().toLocaleDateString('pt-BR');
+
+    var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    var W   = doc.internal.pageSize.getWidth();
+
+    // Fundo
+    doc.setFillColor(245, 248, 255);
+    doc.rect(0, 0, 210, 297, 'F');
+
+    // Cabeçalho
+    doc.setFillColor(15, 22, 36);
+    doc.rect(0, 0, 210, 42, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.setTextColor(247, 183, 49);
+    doc.text('RECIBO DE PAGAMENTO CONSOLIDADO', W - 10, 14, { align: 'right' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+    doc.setTextColor(160, 175, 200);
+    doc.text('Emitido em: ' + dataHoje, W - 10, 21, { align: 'right' });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+    doc.setTextColor(38, 222, 129);
+    doc.text('PJ Tecnologia e Sistemas', 12, 14);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
+    doc.setTextColor(139, 151, 176);
+    doc.text('Sistema de Folga Trabalhada', 12, 20);
+
+    var y = 52;
+
+    // Caixa colaborador + total
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(200, 210, 230); doc.setLineWidth(0.4);
+    doc.roundedRect(10, y, 190, 28, 3, 3, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 110, 140);
+    doc.text('COLABORADOR', 18, y + 7);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 30, 60);
+    doc.text(colabNome, 18, y + 17);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 110, 140);
+    doc.text('TOTAL A RECEBER', W - 18, y + 7, { align: 'right' });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(20, 140, 70);
+    doc.text('R$ ' + totalValor.toFixed(2).replace('.', ','), W - 18, y + 18, { align: 'right' });
+    y += 36;
+
+    // Resumo quantidade
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(60, 70, 90);
+    doc.text(filtrados.length + ' lançamento' + (filtrados.length !== 1 ? 's' : '') +
+      ' no período selecionado', 105, y, { align: 'center' });
+    y += 10;
+
+    // Tabela de lançamentos
+    var COL_DATE  = 12;
+    var COL_POSTO = 38;
+    var COL_TIP   = 100;
+    var COL_HOR   = 148;
+    var COL_VAL   = 196;
+
+    // Cabeçalho tabela
+    doc.setFillColor(22, 30, 50);
+    doc.rect(10, y, 190, 9, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(200, 215, 240);
+    doc.text('DATA',      COL_DATE, y + 5.5);
+    doc.text('POSTO',     COL_POSTO, y + 5.5);
+    doc.text('MOTIVO / AUSENTE', COL_TIP,  y + 5.5);
+    doc.text('HORÁRIO',   COL_HOR,  y + 5.5);
+    doc.text('VALOR',     COL_VAL,  y + 5.5, { align: 'right' });
+    y += 9;
+
+    filtrados.forEach(function(r, i) {
+      // Calcula altura da linha: se tiver ausente, linha maior
+      var isBico  = r.tipo === 'bico';
+      var tipTxt  = isBico ? 'Bico Fixo' : (r.motivo || 'FT');
+      var dtStr   = r.dataHora ? new Date(r.dataHora).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+
+      // Monta texto do ausente
+      var ausenteTxt = '';
+      if (!isBico && r.quemFaltou) {
+        var ausentePrefix = 'Ausente';
+        if (r.motivo === 'Cobertura de Férias')    ausentePrefix = '🏖 Férias';
+        else if (r.motivo === 'Suspensão')          ausentePrefix = 'Suspenso';
+        else if (r.motivo === 'Atestado')           ausentePrefix = 'Atestado';
+        else if (r.motivo === 'Afastamento')        ausentePrefix = 'Afastado';
+        else if (r.motivo === 'Remanejamento Interno') ausentePrefix = 'Remanejado';
+        else if (r.motivo === 'Folga do Vigia')     ausentePrefix = 'De folga';
+        ausenteTxt = ausentePrefix + ': ' + r.quemFaltou;
+      }
+
+      var rowH = ausenteTxt ? 15 : 10;
+
+      if (y + rowH > 275) {
+        doc.addPage();
+        doc.setFillColor(245, 248, 255); doc.rect(0, 0, 210, 297, 'F');
+        y = 15;
+        // repete cabeçalho
+        doc.setFillColor(22, 30, 50); doc.rect(10, y, 190, 9, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(200, 215, 240);
+        doc.text('DATA', COL_DATE, y + 5.5);
+        doc.text('POSTO', COL_POSTO, y + 5.5);
+        doc.text('MOTIVO / AUSENTE', COL_TIP, y + 5.5);
+        doc.text('HORÁRIO', COL_HOR, y + 5.5);
+        doc.text('VALOR', COL_VAL, y + 5.5, { align: 'right' });
+        y += 9;
+      }
+
+      var even = i % 2 === 0;
+      doc.setFillColor(even ? 250 : 255, even ? 252 : 255, even ? 255 : 255);
+      doc.setDrawColor(220, 225, 235); doc.setLineWidth(0.2);
+      doc.rect(10, y, 190, rowH, 'FD');
+
+      // Linha base de texto dentro da célula
+      var textY = ausenteTxt ? y + 5.5 : y + 6.5;
+
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(30, 40, 65);
+      doc.text(dtStr, COL_DATE, textY);
+      doc.text(doc.splitTextToSize(r.posto || '—', 58)[0], COL_POSTO, textY);
+      doc.text(doc.splitTextToSize(tipTxt, 44)[0], COL_TIP, textY);
+      doc.text(doc.splitTextToSize(r.horario || '—', 44)[0], COL_HOR, textY);
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 120, 60);
+      doc.text('R$ ' + (r.valor || 0).toFixed(2).replace('.', ','), COL_VAL, textY, { align: 'right' });
+
+      // Segunda linha: ausente (em amarelo/laranja)
+      if (ausenteTxt) {
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(6.8); doc.setTextColor(160, 100, 10);
+        doc.text(doc.splitTextToSize(ausenteTxt, 88)[0], COL_TIP, y + 11.5);
+      }
+
+      y += rowH;
+    });
+
+    // Total
+    y += 4;
+    doc.setFillColor(255, 250, 220); doc.setDrawColor(200, 180, 40); doc.setLineWidth(0.3);
+    doc.rect(10, y, 190, 10, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(120, 80, 0);
+    doc.text('TOTAL A RECEBER', 18, y + 6.5);
+    doc.setTextColor(20, 120, 60);
+    doc.text('R$ ' + totalValor.toFixed(2).replace('.', ','), COL_VAL, y + 6.5, { align: 'right' });
+    y += 18;
+
+    // Declaração
+    if (y + 60 > 275) { doc.addPage(); doc.setFillColor(245,248,255); doc.rect(0,0,210,297,'F'); y = 20; }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(60, 70, 90);
+    doc.text('Eu, ' + colabNome + ', declaro que recebi o valor total de R$ ' + totalValor.toFixed(2).replace('.', ','), 105, y, { align: 'center' });
+    y += 6;
+    doc.text('referente aos lançamentos descritos acima.', 105, y, { align: 'center' });
+    y += 16;
+
+    // Assinatura
+    doc.setFillColor(255, 255, 255); doc.setDrawColor(180, 185, 200); doc.setLineWidth(0.5);
+    doc.roundedRect(25, y, 160, 40, 3, 3, 'FD');
+    doc.setDrawColor(60, 70, 100); doc.setLineWidth(0.7);
+    doc.line(40, y + 28, 170, y + 28);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80, 90, 120);
+    doc.text('ASSINATURA DO COLABORADOR', 105, y + 33, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(30, 40, 70);
+    doc.text(colabNome, 105, y + 37, { align: 'center' });
+    doc.setFontSize(7.5); doc.setTextColor(130, 140, 160);
+    doc.text('Data: ______ / ______ / __________', 105, y + 44, { align: 'center' });
+
+    // Rodapé
+    var totalPgs = doc.internal.getNumberOfPages();
+    for (var pg = 1; pg <= totalPgs; pg++) {
+      doc.setPage(pg);
+      doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.3); doc.line(10, 280, W - 10, 280);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(160, 170, 185);
+      doc.text('PJ Tecnologia e Sistemas  |  Recibo gerado em: ' + dataHoje, 105, 285, { align: 'center' });
+      doc.text('Pág. ' + pg + ' / ' + totalPgs, 195, 285, { align: 'right' });
+    }
+
+    var nomeArq = 'ReciboPagamento_' + colabNome.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') + '_' + dataHoje.replace(/\//g, '-') + '.pdf';
+    doc.save(nomeArq);
+    showToast('🧾 Recibo consolidado gerado!', 'success');
+  }
+
+  function initPagamentos() {
+    // Busca texto
+    var searchEl = document.getElementById('pagSearch');
+    if (searchEl) searchEl.addEventListener('input', function() {
+      pagQuery = searchEl.value;
+      renderPagamentos();
+    });
+
+    // Selects de colaborador e posto
+    var selColab = document.getElementById('pagSelectColaborador');
+    var selPosto = document.getElementById('pagSelectPosto');
+    if (selColab) selColab.addEventListener('change', function() {
+      pagColabFiltro = selColab.value;
+      renderPagamentos();
+    });
+    if (selPosto) selPosto.addEventListener('change', function() {
+      pagPostoFiltro = selPosto.value;
+      renderPagamentos();
+    });
+
+    // Pills tipo
+    document.querySelectorAll('.dash-pill[data-pag-fonte]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        pagFonte = btn.dataset.pagFonte;
+        document.querySelectorAll('.dash-pill[data-pag-fonte]').forEach(function(b) {
+          b.classList.toggle('active', b.dataset.pagFonte === pagFonte);
+        });
+        renderPagamentos();
+      });
+    });
+
+    // Pills período
+    document.querySelectorAll('.dash-pill[data-pag-period]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        pagPeriod = btn.dataset.pagPeriod;
+        document.querySelectorAll('.dash-pill[data-pag-period]').forEach(function(b) {
+          b.classList.toggle('active', b.dataset.pagPeriod === pagPeriod);
+        });
+        renderPagamentos();
+      });
+    });
+
+    // Datas
+    function updatePagDateUI() {
+      var badge  = document.getElementById('pag-date-active-badge');
+      var btnClr = document.getElementById('btnPagDateClear');
+      var hasDate = !!(pagDateDe || pagDateAte);
+      if (badge)  badge.style.display  = hasDate ? 'inline' : 'none';
+      if (btnClr) btnClr.style.display = hasDate ? 'inline-flex' : 'none';
+    }
+    var pagDateDeEl  = document.getElementById('pagDateDe');
+    var pagDateAteEl = document.getElementById('pagDateAte');
+    var pagDateClrEl = document.getElementById('btnPagDateClear');
+    if (pagDateDeEl) pagDateDeEl.addEventListener('change', function() {
+      pagDateDe = pagDateDeEl.value; updatePagDateUI(); renderPagamentos();
+    });
+    if (pagDateAteEl) pagDateAteEl.addEventListener('change', function() {
+      pagDateAte = pagDateAteEl.value; updatePagDateUI(); renderPagamentos();
+    });
+    if (pagDateClrEl) pagDateClrEl.addEventListener('click', function() {
+      pagDateDe = ''; pagDateAte = '';
+      if (pagDateDeEl)  pagDateDeEl.value  = '';
+      if (pagDateAteEl) pagDateAteEl.value = '';
+      updatePagDateUI(); renderPagamentos();
+    });
+
+    // Botão recibo consolidado
+    var btnRecibo = document.getElementById('btnPagReciboConsolidado');
+    if (btnRecibo) btnRecibo.addEventListener('click', gerarReciboPagamentos);
+  }
 
   // ════════════════════════════════════════════════
   // BICO FIXO — Lógica completa
@@ -6690,9 +7322,6 @@ var FIRESTORE_DOC_ID     = 'dados';
 
   /* ── Verifica pendências ───────────────────────────────── */
   function getPendencias() {
-    /* Lembrete de bicos só é exibido durante lançamentos noturnos */
-    if (turnoAtual() !== 'noite') return [];
-
     var cfg       = loadConfig();
     var registros = getBicoRegistros();
     var pendencias = [];
