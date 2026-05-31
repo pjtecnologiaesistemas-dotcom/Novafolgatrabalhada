@@ -498,7 +498,7 @@
   }
 
   /* ── Accordion cadastros ── */
-  .cad-accordion { padding: 0 !important; overflow: hidden; }
+  .cad-accordion { padding: 0 !important; }
   .cad-acc-header {
     width: 100%; background: none; border: none; cursor: pointer;
     display: flex; align-items: center; gap: 10px;
@@ -525,13 +525,11 @@
   }
   .cad-accordion.open .cad-acc-chevron { transform: rotate(180deg); }
   .cad-acc-body {
-    max-height: 0; overflow: hidden;
-    transition: max-height .3s ease, padding .3s ease;
-    padding: 0 18px;
+    display: none;
+    padding: 0 18px 16px;
   }
   .cad-accordion.open .cad-acc-body {
-    max-height: 1200px;
-    padding: 0 18px 16px;
+    display: block;
   }
 
   .add-row { display: flex; gap: 8px; margin-bottom: 16px; }
