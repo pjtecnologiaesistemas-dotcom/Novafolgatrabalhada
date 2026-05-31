@@ -3292,24 +3292,36 @@
     var ftsExist = JSON.parse(localStorage.getItem('ft_registros') || '[]');
     var dataLancamento = dataHora.slice(0, 10); // 'YYYY-MM-DD'
 
-    var duplicata = ftsExist.find(function(ft) {
-      // Normaliza o nome para comparação sem sensibilidade a maiúsculas/espaços
+    // ── Duplicata por colaborador (mesmo turno, mesma pessoa) ──
+    var duplicataColab = ftsExist.find(function(ft) {
       var mesmaPessoa = (ft.substituto || '').trim().toLowerCase() ===
                         (substituto   || '').trim().toLowerCase();
-      // Usa a data do campo dataHora do registro existente (slice 10 chars = YYYY-MM-DD)
-      var ftData = (ft.dataHora || ft.criadoEm || '').slice(0, 10);
+      var ftData      = (ft.dataHora || ft.criadoEm || '').slice(0, 10);
       var mesmaData   = ftData === dataLancamento;
-      // Compara o turno exato (ex: "06:00 – 18:00" === "06:00 – 18:00")
       var mesmoTurno  = (ft.horario || '').trim() === (horario || '').trim();
-
       return mesmaPessoa && mesmaData && mesmoTurno;
     });
+
+    // ── Duplicata por posto (mesmo posto + mesmo turno + mesma data) ──
+    var duplicataPosto = ftsExist.find(function(ft) {
+      var mesmoPosto = (ft.posto || '').trim().toLowerCase() ===
+                       (posto    || '').trim().toLowerCase();
+      var ftData     = (ft.dataHora || ft.criadoEm || '').slice(0, 10);
+      var mesmaData  = ftData === dataLancamento;
+      var mesmoTurno = (ft.horario || '').trim() === (horario || '').trim();
+      return mesmoPosto && mesmaData && mesmoTurno;
+    });
+
+    var duplicata = duplicataColab || duplicataPosto;
 
     if (duplicata) {
       var dtFmt = new Date(dataLancamento + 'T12:00:00').toLocaleDateString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric'
       });
-      document.getElementById('modal-colab-nome').textContent = substituto;
+      var motivoBloqueio = duplicataColab
+        ? 'Colaborador já possui FT neste turno.'
+        : 'Posto já possui FT neste turno.';
+      document.getElementById('modal-colab-nome').textContent = motivoBloqueio;
       document.getElementById('modal-detalhe').textContent =
         'Data: ' + dtFmt + '  ·  Turno: ' + horario + '  ·  Posto: ' + (duplicata.posto || '—');
       document.getElementById('modalDuplicata').classList.add('show');
@@ -6078,16 +6090,30 @@
     // Verificação de duplicata
     var bicosExist     = getBicos();
     var dataLancamento = dataHora.slice(0, 10);
-    var duplicata = bicosExist.find(function(b) {
+    // ── Duplicata por colaborador ──
+    var duplicataColab = bicosExist.find(function(b) {
       return (b.colaborador || '').trim().toLowerCase() === colaborador.trim().toLowerCase()
           && (b.dataHora    || '').slice(0, 10) === dataLancamento
           && (b.horario     || '').trim()        === horario;
     });
+
+    // ── Duplicata por posto (mesmo posto + mesmo turno + mesma data) ──
+    var duplicataPosto = bicosExist.find(function(b) {
+      return (b.posto    || '').trim().toLowerCase() === posto.trim().toLowerCase()
+          && (b.dataHora || '').slice(0, 10) === dataLancamento
+          && (b.horario  || '').trim()        === horario;
+    });
+
+    var duplicata = duplicataColab || duplicataPosto;
+
     if (duplicata) {
       var dtFmt = new Date(dataLancamento + 'T12:00:00').toLocaleDateString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric'
       });
-      document.getElementById('modal-bico-nome').textContent    = colaborador;
+      var motivoBloqueio = duplicataColab
+        ? colaborador
+        : 'Posto já possui lançamento neste turno.';
+      document.getElementById('modal-bico-nome').textContent    = motivoBloqueio;
       document.getElementById('modal-bico-detalhe').textContent =
         'Data: ' + dtFmt + '  ·  Turno: ' + horario + '  ·  Posto: ' + (duplicata.posto || '—');
       document.getElementById('modalDuplicataBico').classList.add('show');
