@@ -497,6 +497,43 @@
     gap: 8px;
   }
 
+  /* ── Accordion cadastros ── */
+  .cad-accordion { padding: 0 !important; overflow: hidden; }
+  .cad-acc-header {
+    width: 100%; background: none; border: none; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 18px; text-align: left;
+    transition: background .18s;
+  }
+  .cad-acc-header:hover { background: rgba(255,255,255,.03); }
+  .cad-acc-title {
+    font-family: 'Exo 2', sans-serif;
+    font-size: .9rem; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    flex: 1;
+  }
+  .cad-acc-badge {
+    background: rgba(139,151,176,.18);
+    color: #8b97b0;
+    font-size: .65rem; font-weight: 800;
+    padding: 2px 9px; border-radius: 12px;
+    letter-spacing: .3px; flex-shrink: 0;
+  }
+  .cad-acc-chevron {
+    font-size: .65rem; color: #8b97b0;
+    transition: transform .25s; flex-shrink: 0;
+  }
+  .cad-accordion.open .cad-acc-chevron { transform: rotate(180deg); }
+  .cad-acc-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height .3s ease, padding .3s ease;
+    padding: 0 18px;
+  }
+  .cad-accordion.open .cad-acc-body {
+    max-height: 1200px;
+    padding: 0 18px 16px;
+  }
+
   .add-row { display: flex; gap: 8px; margin-bottom: 16px; }
   .add-row input { flex: 1; }
   .btn-add {
@@ -2014,26 +2051,69 @@
       </div>
     </div>
 
-    <div class="cadastro-section">
-      <h2 class="col-amber">&#x1F4CD; Postos de Trabalho</h2>
-      <div class="add-row">
-        <input type="text" id="inputPosto" placeholder="Nome do posto…" maxlength="80">
-        <button class="btn-add" id="btnAddPosto">+ Adicionar</button>
-      </div>
-      <div class="list-items" id="listaPostos">
-        <p class="empty-state">Nenhum posto cadastrado.</p>
+    <!-- Colaboradores (accordion) -->
+    <div class="cadastro-section cad-accordion" id="acc-colaboradores">
+      <button class="cad-acc-header" type="button" onclick="toggleAcc('acc-colaboradores')">
+        <span class="cad-acc-title col-green">&#x1F464; Colaboradores</span>
+        <span class="cad-acc-badge" id="badge-colaboradores">0</span>
+        <span class="cad-acc-chevron" id="chev-acc-colaboradores">&#x25BC;</span>
+      </button>
+      <div class="cad-acc-body" id="body-acc-colaboradores">
+        <div class="add-row">
+          <input type="text" id="inputColaborador" placeholder="Nome do colaborador…" maxlength="80">
+          <button class="btn-add" id="btnAddColaborador">+ Adicionar</button>
+        </div>
+        <div class="list-items" id="listaColaboradores">
+          <p class="empty-state">Nenhum colaborador cadastrado.</p>
+        </div>
       </div>
     </div>
 
-    <div class="cadastro-section">
-      <h2 class="col-green">&#x1F464; Colaboradores</h2>
-      <div class="add-row">
-        <input type="text" id="inputColaborador" placeholder="Nome do colaborador…" maxlength="80">
-        <button class="btn-add" id="btnAddColaborador">+ Adicionar</button>
+    <!-- Postos (accordion) -->
+    <div class="cadastro-section cad-accordion" id="acc-postos">
+      <button class="cad-acc-header" type="button" onclick="toggleAcc('acc-postos')">
+        <span class="cad-acc-title col-amber">&#x1F4CD; Postos de Trabalho</span>
+        <span class="cad-acc-badge" id="badge-postos">0</span>
+        <span class="cad-acc-chevron" id="chev-acc-postos">&#x25BC;</span>
+      </button>
+      <div class="cad-acc-body" id="body-acc-postos">
+        <div class="add-row">
+          <input type="text" id="inputPosto" placeholder="Nome do posto…" maxlength="80">
+          <button class="btn-add" id="btnAddPosto">+ Adicionar</button>
+        </div>
+        <div class="list-items" id="listaPostos">
+          <p class="empty-state">Nenhum posto cadastrado.</p>
+        </div>
       </div>
-      <div class="list-items" id="listaColaboradores">
-        <p class="empty-state">Nenhum colaborador cadastrado.</p>
+    </div>
+
+    <!-- ── Configuração de Alertas FT ── -->
+    <div class="cadastro-section" id="cad-alertas-section">
+      <h2 style="color:#fc5c65;display:flex;align-items:center;gap:8px;">
+        &#x23F0; Alertas de FT
+        <span id="cad-alerta-badge-count" style="display:none;background:rgba(252,92,101,.18);border:1px solid rgba(252,92,101,.45);color:#fc5c65;font-size:.65rem;font-weight:800;padding:2px 9px;border-radius:12px;letter-spacing:.3px;"></span>
+      </h2>
+
+      <!-- Toggles Dia / Noite -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <button id="cad-toggle-dia" type="button" style="flex:1;border:1px solid #2a3347;border-radius:10px;padding:10px 6px;font-size:.82rem;font-weight:700;cursor:pointer;transition:background .25s,color .25s,border-color .25s;">☀️ Dia</button>
+        <button id="cad-toggle-noite" type="button" style="flex:1;border:1px solid #2a3347;border-radius:10px;padding:10px 6px;font-size:.82rem;font-weight:700;cursor:pointer;transition:background .25s,color .25s,border-color .25s;">🌙 Noite</button>
       </div>
+
+      <!-- Postos monitorados -->
+      <div style="font-family:'Exo 2',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#8b97b0;margin-bottom:8px;">📍 Postos Monitorados</div>
+      <div id="cad-postos-alerta-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+
+      <!-- Adicionar posto -->
+      <div class="add-row" style="margin-bottom:12px;">
+        <input type="text" id="cad-alerta-novo-posto" placeholder="Nome do posto a monitorar…" maxlength="80">
+        <button class="btn-add" id="cad-alerta-add-posto" type="button">+ Adicionar</button>
+      </div>
+
+      <!-- Testar alerta -->
+      <button id="cad-alerta-testar" type="button" style="width:100%;border:1px solid rgba(252,92,101,.4);background:rgba(252,92,101,.08);color:#fc5c65;border-radius:10px;padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;transition:background .2s;letter-spacing:.3px;">
+        🔔 Testar Alerta Agora
+      </button>
     </div>
 
   </div>
@@ -3278,6 +3358,8 @@
   // ── Colaboradores ────────────────────────────────
   function renderColaboradoresList() {
     var list = document.getElementById('listaColaboradores');
+    var b = document.getElementById('badge-colaboradores');
+    if (b) b.textContent = colaboradores.length || 0;
     if (!colaboradores.length) {
       list.innerHTML = '<p class="empty-state">Nenhum colaborador cadastrado.</p>';
       return;
@@ -3346,6 +3428,8 @@
   // ── Postos ───────────────────────────────────────
   function renderPostosList() {
     var list = document.getElementById('listaPostos');
+    var b = document.getElementById('badge-postos');
+    if (b) b.textContent = postos.length || 0;
     if (!postos.length) {
       list.innerHTML = '<p class="empty-state">Nenhum posto cadastrado.</p>';
       return;
@@ -7233,7 +7317,8 @@ var FIRESTORE_DOC_ID     = 'dados';
   function periodoRegistro(r) {
     var h = extrairHoraInicio(r.horario || r.turno || '');
     if (h < 0) return null;
-    return (h >= 6 && h < 18) ? 'dia' : 'noite';
+    /* Noturno: a partir das 16h ou antes das 06h */
+    return (h >= 6 && h < 16) ? 'dia' : 'noite';
   }
 
   function fmtMin(min) {
@@ -7317,7 +7402,8 @@ var FIRESTORE_DOC_ID     = 'dados';
   /* ── Turno global (para título do modal) ───────────────── */
   function turnoAtual() {
     var h = new Date().getHours();
-    return (h >= 6 && h < 18) ? 'dia' : 'noite';
+    /* Noturno: a partir das 16h ou antes das 06h */
+    return (h >= 6 && h < 16) ? 'dia' : 'noite';
   }
 
   /* ── Verifica pendências ───────────────────────────────── */
@@ -7732,6 +7818,27 @@ var FIRESTORE_DOC_ID     = 'dados';
     for (var posto in custom) {
       ESCALAS_POSTOS[posto] = { semana: custom[posto] };
     }
+
+    /* ── Migração: postos monitorados sem escala ganham escala padrão 24h ──
+       Garante que postos adicionados manualmente em versões anteriores
+       (antes da correção) também passem a gerar alertas. ────────────────── */
+    var cfgMig = loadConfig();
+    cfgMig.postos.forEach(function(posto) {
+      var normP = norm(posto);
+      var temEscala = false;
+      for (var k in ESCALAS_POSTOS) {
+        if (norm(k) === normP) { temEscala = true; break; }
+      }
+      if (!temEscala) {
+        var semanaDefault = [];
+        for (var d = 0; d < 7; d++) {
+          semanaDefault.push([
+            { e: 18*60, s: 6*60, nd: true, per: 'noite' }
+          ]);
+        }
+        salvarEscalaCustom(posto, semanaDefault);
+      }
+    });
   }
 
   /* ── Renderiza lista de postos na config ───────────────── */
@@ -7812,7 +7919,9 @@ var FIRESTORE_DOC_ID     = 'dados';
     bind('ft-config-close', function () {
       document.getElementById('ft-config-overlay').style.display = 'none';
       updateHeaderBadge();
-      renderBicoPostosMonitorados(); // sincroniza card da aba Bico
+      renderBicoPostosMonitorados();  // sincroniza card da aba Bico
+      renderCadAlertasPostos();       // sincroniza seção Cadastros
+      renderCadAlertasToggles();
     });
 
     bind('ft-config-test', function () {
@@ -7829,7 +7938,25 @@ var FIRESTORE_DOC_ID     = 'dados';
       if (cfg.postos.indexOf(val) === -1) {
         cfg.postos.push(val);
         saveConfig(cfg);
+
+        /* ── Garante escala padrão 24h para postos adicionados sem escala ── */
+        var temEscala = false;
+        var normValCfg = norm(val);
+        for (var k in ESCALAS_POSTOS) {
+          if (norm(k) === normValCfg) { temEscala = true; break; }
+        }
+        if (!temEscala) {
+          var semanaDefault = [];
+          for (var d = 0; d < 7; d++) {
+            semanaDefault.push([
+              { e: 18*60, s: 6*60, nd: true, per: 'noite' }
+            ]);
+          }
+          salvarEscalaCustom(val, semanaDefault);
+        }
+
         renderConfigPostos();
+        renderEscalaSelectPostos();
         updateHeaderBadge();
       }
       input.value = '';
@@ -7869,6 +7996,9 @@ var FIRESTORE_DOC_ID     = 'dados';
 
     // Card de postos monitorados na aba Bico Fixo
     initBicoPostosMonitoradosCard();
+
+    // Seção de alertas na aba Cadastros
+    initCadAlertasSection();
   }
 
   function openConfigModal() {
@@ -7963,6 +8093,27 @@ var FIRESTORE_DOC_ID     = 'dados';
       }
       cfg.postos.push(val);
       saveConfig(cfg);
+
+      /* ── Garante que o posto novo tem escala para gerar alertas ─────────
+         Se não existe escala hardcoded nem customizada, injeta escala
+         padrão 24h (Dia 06→18 + Noite 18→06) em todos os dias da semana.
+         Isso permite que o alerta funcione imediatamente sem forçar o
+         usuário a configurar escala manualmente. ──────────────────────── */
+      var temEscala = false;
+      var normValChk = norm(val);
+      for (var k in ESCALAS_POSTOS) {
+        if (norm(k) === normValChk) { temEscala = true; break; }
+      }
+      if (!temEscala) {
+        var semanaDefault = [];
+        for (var d = 0; d < 7; d++) {
+          semanaDefault.push([
+            { e: 18*60, s: 6*60, nd: true, per: 'noite' }
+          ]);
+        }
+        salvarEscalaCustom(val, semanaDefault); // salva no localStorage E em ESCALAS_POSTOS
+      }
+
       renderBicoPostosMonitorados();
       renderConfigPostos();
       renderEscalaSelectPostos();
@@ -7982,6 +8133,162 @@ var FIRESTORE_DOC_ID     = 'dados';
     renderBicoPostosMonitorados();
   }
 
+  /* ══════════════════════════════════════════════════════════
+     SEÇÃO DE ALERTAS NA ABA CADASTROS
+     Espelha os controles do modal de config diretamente na aba,
+     permitindo editar postos monitorados e toggles sem abrir popup.
+     ══════════════════════════════════════════════════════════ */
+
+  function renderCadAlertasPostos() {
+    var list = document.getElementById('cad-postos-alerta-list');
+    if (!list) return;
+    var cfg = loadConfig();
+    list.innerHTML = '';
+
+    if (!cfg.postos.length) {
+      list.innerHTML = '<div style="color:#8b97b0;font-size:.8rem;text-align:center;padding:6px 0;">Nenhum posto monitorado.</div>';
+    } else {
+      cfg.postos.forEach(function(posto, idx) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid #2a3347;border-radius:10px;padding:10px 14px;';
+
+        var dot = document.createElement('span');
+        dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#fc5c65;flex-shrink:0;';
+
+        var lbl = document.createElement('span');
+        lbl.style.cssText = 'flex:1;color:#e8edf5;font-size:.9rem;';
+        lbl.textContent = posto;
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.cssText = 'border:none;background:rgba(252,92,101,.15);color:#fc5c65;border-radius:7px;padding:5px 10px;font-size:.82rem;font-weight:700;cursor:pointer;';
+        btn.textContent = '✕';
+        btn.title = 'Remover posto monitorado';
+        btn.onclick = function() {
+          cfg.postos.splice(idx, 1);
+          saveConfig(cfg);
+          renderCadAlertasPostos();
+          renderCadAlertasToggles();
+          renderBicoPostosMonitorados();
+          renderConfigPostos();
+          updateHeaderBadge();
+          if (typeof window.showToast === 'function') window.showToast('🗑️ Posto removido dos monitorados.', 'error');
+        };
+
+        row.appendChild(dot);
+        row.appendChild(lbl);
+        row.appendChild(btn);
+        list.appendChild(row);
+      });
+    }
+
+    // Atualiza badge de contagem
+    var badge = document.getElementById('cad-alerta-badge-count');
+    if (badge) {
+      if (cfg.postos.length) {
+        badge.textContent = cfg.postos.length + ' posto' + (cfg.postos.length > 1 ? 's' : '');
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+
+  function renderCadAlertasToggles() {
+    var cfg = loadConfig();
+    function applyBtn(id, ativo) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.style.background  = ativo ? 'linear-gradient(135deg,#26de81,#20a862)' : 'rgba(139,151,176,.12)';
+      el.style.color       = ativo ? '#0d1117' : '#8b97b0';
+      el.style.borderColor = ativo ? 'transparent' : '#2a3347';
+      el.textContent = (id === 'cad-toggle-dia')
+        ? (ativo ? '☀️ Dia — Ativo'   : '☀️ Dia — Inativo')
+        : (ativo ? '🌙 Noite — Ativo' : '🌙 Noite — Inativo');
+    }
+    applyBtn('cad-toggle-dia',   cfg.alertarDia);
+    applyBtn('cad-toggle-noite', cfg.alertarNoite);
+  }
+
+  function initCadAlertasSection() {
+    var btnAddPosto = document.getElementById('cad-alerta-add-posto');
+    var inputPosto  = document.getElementById('cad-alerta-novo-posto');
+    var btnTestar   = document.getElementById('cad-alerta-testar');
+    var btnDia      = document.getElementById('cad-toggle-dia');
+    var btnNoite    = document.getElementById('cad-toggle-noite');
+
+    if (!btnAddPosto) return; // aba não existe no DOM
+
+    function adicionarPostoCad() {
+      var val = (inputPosto ? inputPosto.value : '').trim();
+      if (!val) {
+        if (typeof window.showToast === 'function') window.showToast('⚠️ Digite o nome do posto.', 'error');
+        return;
+      }
+      var cfg = loadConfig();
+      var normVal = norm(val);
+      var jaExiste = cfg.postos.some(function(p) { return norm(p) === normVal; });
+      if (jaExiste) {
+        if (typeof window.showToast === 'function') window.showToast('⚠️ Posto já está na lista.', 'error');
+        return;
+      }
+      cfg.postos.push(val);
+      saveConfig(cfg);
+
+      // Garante escala noturna padrão se não tiver escala
+      var temEscala = false;
+      for (var k in ESCALAS_POSTOS) { if (norm(k) === normVal) { temEscala = true; break; } }
+      if (!temEscala) {
+        var semanaDefault = [];
+        for (var d = 0; d < 7; d++) {
+          semanaDefault.push([{ e: 18*60, s: 6*60, nd: true, per: 'noite' }]);
+        }
+        salvarEscalaCustom(val, semanaDefault);
+      }
+
+      if (inputPosto) inputPosto.value = '';
+      renderCadAlertasPostos();
+      renderCadAlertasToggles();
+      renderBicoPostosMonitorados();
+      renderConfigPostos();
+      renderEscalaSelectPostos();
+      updateHeaderBadge();
+      if (typeof window.showToast === 'function') window.showToast('✅ Posto "' + val + '" adicionado aos monitorados!', 'success');
+    }
+
+    btnAddPosto.addEventListener('click', adicionarPostoCad);
+    if (inputPosto) inputPosto.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); adicionarPostoCad(); }
+    });
+
+    if (btnTestar) btnTestar.addEventListener('click', function() {
+      clearSnoozed();
+      checkAndAlert();
+      if (typeof window.showToast === 'function') window.showToast('🔔 Verificando alertas…', 'success');
+    });
+
+    if (btnDia) btnDia.addEventListener('click', function() {
+      var cfg = loadConfig();
+      cfg.alertarDia = !cfg.alertarDia;
+      saveConfig(cfg);
+      renderCadAlertasToggles();
+      renderConfigPeriodos(); // sincroniza modal config
+      updateHeaderBadge();
+    });
+
+    if (btnNoite) btnNoite.addEventListener('click', function() {
+      var cfg = loadConfig();
+      cfg.alertarNoite = !cfg.alertarNoite;
+      saveConfig(cfg);
+      renderCadAlertasToggles();
+      renderConfigPeriodos(); // sincroniza modal config
+      updateHeaderBadge();
+    });
+
+    renderCadAlertasPostos();
+    renderCadAlertasToggles();
+  }
+
   window.FT_AlertCheck = {
     checkNow:   function () { clearSnoozed(); checkAndAlert(); },
     openConfig: openConfigModal
@@ -7993,6 +8300,14 @@ var FIRESTORE_DOC_ID     = 'dados';
     init();
   }
 }());
+
+/* ── Accordion cadastros (global, fora da IIFE) ── */
+function toggleAcc(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var isOpen = el.classList.contains('open');
+  el.classList.toggle('open', !isOpen);
+}
 </script>
 
 <!-- ── Footer branding PJ Tecnologia ── -->
