@@ -5647,170 +5647,205 @@
     var dataHoje   = new Date().toLocaleDateString('pt-BR');
 
     var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    var W   = doc.internal.pageSize.getWidth();
+    var W   = doc.internal.pageSize.getWidth();   // 210 mm
+    var H   = doc.internal.pageSize.getHeight();  // 297 mm
 
-    // Fundo
-    doc.setFillColor(245, 248, 255);
-    doc.rect(0, 0, 210, 297, 'F');
+    // ── Constantes de layout compacto ──────────────────────────────────────
+    // Área útil: y de 8 até 285 (277 mm disponíveis)
+    // Cabeçalho:  8 mm  (y 0→8)
+    // Card colab: 20 mm (y 8→28)  — compactado de 28
+    // Resumo:      6 mm (y 28→34)
+    // Th tabela:   7 mm (y 34→41)
+    // 15 linhas × 12 mm = 180 mm (y 41→221)
+    // Total:       8 mm (y 221→229)
+    // Declaração:  10 mm (y 229→239)
+    // Assinatura: 34 mm (y 239→273)
+    // Rodapé:     12 mm (y 273→285)
+    // TOTAL: 277 mm ✓ — cabe em uma folha com até 15 lançamentos
 
-    // Cabeçalho
+    var LIMITE_UMA_PAGINA = 15; // Até 15 lançamentos → tudo em 1 folha
+
+    // ── Fundo ──────────────────────────────────────────────────────────────
+    function fundoFolha() {
+      doc.setFillColor(245, 248, 255);
+      doc.rect(0, 0, 210, 297, 'F');
+    }
+    fundoFolha();
+
+    // ── Cabeçalho compacto (altura 32 mm) ─────────────────────────────────
     doc.setFillColor(15, 22, 36);
-    doc.rect(0, 0, 210, 42, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.rect(0, 0, 210, 32, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
     doc.setTextColor(247, 183, 49);
-    doc.text('RECIBO DE PAGAMENTO CONSOLIDADO', W - 10, 14, { align: 'right' });
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+    doc.text('RECIBO DE PAGAMENTO CONSOLIDADO', W - 9, 12, { align: 'right' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
     doc.setTextColor(160, 175, 200);
-    doc.text('Emitido em: ' + dataHoje, W - 10, 21, { align: 'right' });
+    doc.text('Emitido em: ' + dataHoje, W - 9, 18, { align: 'right' });
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
     doc.setTextColor(38, 222, 129);
-    doc.text('PJ Tecnologia e Sistemas', 12, 14);
+    doc.text('PJ Tecnologia e Sistemas', 10, 12);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
     doc.setTextColor(139, 151, 176);
-    doc.text('Sistema de Folga Trabalhada', 12, 20);
+    doc.text('Sistema de Folga Trabalhada', 10, 18);
 
-    var y = 52;
+    var y = 38; // ← início do conteúdo após cabeçalho
 
-    // Caixa colaborador + total
+    // ── Card colaborador + total (altura 20 mm) ────────────────────────────
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(200, 210, 230); doc.setLineWidth(0.4);
-    doc.roundedRect(10, y, 190, 28, 3, 3, 'FD');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 110, 140);
-    doc.text('COLABORADOR', 18, y + 7);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 30, 60);
-    doc.text(colabNome, 18, y + 17);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(100, 110, 140);
-    doc.text('TOTAL A RECEBER', W - 18, y + 7, { align: 'right' });
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(20, 140, 70);
-    doc.text('R$ ' + totalValor.toFixed(2).replace('.', ','), W - 18, y + 18, { align: 'right' });
-    y += 36;
+    doc.roundedRect(10, y, 190, 20, 3, 3, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(100, 110, 140);
+    doc.text('COLABORADOR', 17, y + 5.5);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20, 30, 60);
+    doc.text(colabNome, 17, y + 14);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(100, 110, 140);
+    doc.text('TOTAL A RECEBER', W - 17, y + 5.5, { align: 'right' });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(20, 140, 70);
+    doc.text('R$ ' + totalValor.toFixed(2).replace('.', ','), W - 17, y + 14.5, { align: 'right' });
+    y += 24; // 20 mm card + 4 mm gap
 
-    // Resumo quantidade
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(60, 70, 90);
+    // ── Resumo quantidade ──────────────────────────────────────────────────
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60, 70, 90);
     doc.text(filtrados.length + ' lançamento' + (filtrados.length !== 1 ? 's' : '') +
       ' no período selecionado', 105, y, { align: 'center' });
-    y += 10;
+    y += 6;
 
-    // Tabela de lançamentos
+    // ── Colunas da tabela ──────────────────────────────────────────────────
     var COL_DATE  = 12;
-    var COL_POSTO = 38;
-    var COL_TIP   = 100;
+    var COL_POSTO = 36;
+    var COL_TIP   = 98;
     var COL_HOR   = 148;
-    var COL_VAL   = 196;
+    var COL_VAL   = 198;
 
-    // Cabeçalho tabela
-    doc.setFillColor(22, 30, 50);
-    doc.rect(10, y, 190, 9, 'F');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(200, 215, 240);
-    doc.text('DATA',      COL_DATE, y + 5.5);
-    doc.text('POSTO',     COL_POSTO, y + 5.5);
-    doc.text('MOTIVO / AUSENTE', COL_TIP,  y + 5.5);
-    doc.text('HORÁRIO',   COL_HOR,  y + 5.5);
-    doc.text('VALOR',     COL_VAL,  y + 5.5, { align: 'right' });
-    y += 9;
+    // ── Função que desenha cabeçalho da tabela ────────────────────────────
+    function drawTableHeader(yy) {
+      doc.setFillColor(22, 30, 50);
+      doc.rect(10, yy, 190, 8, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(200, 215, 240);
+      doc.text('DATA',             COL_DATE,  yy + 5);
+      doc.text('POSTO',            COL_POSTO, yy + 5);
+      doc.text('MOTIVO / AUSENTE', COL_TIP,   yy + 5);
+      doc.text('HORÁRIO',          COL_HOR,   yy + 5);
+      doc.text('VALOR',            COL_VAL,   yy + 5, { align: 'right' });
+      return yy + 8;
+    }
+
+    // ── Calcula alturas das linhas antecipadamente ─────────────────────────
+    // Modo compacto (≤15 lançamentos): rowH = 11 mm (com sublin. ausente)
+    // Modo normal (>15): rowH = 13 mm para dar mais espaço
+    var modoCompacto = filtrados.length <= LIMITE_UMA_PAGINA;
+    var ROW_H_BASE   = modoCompacto ? 8  : 10;  // linha sem ausente
+    var ROW_H_AUS    = modoCompacto ? 11 : 13;  // linha com ausente
+
+    // ── Limite vertical para tabela (deixa espaço para total + assinatura) ─
+    // Total: 9 mm | Decl: 10 mm | Assinatura: 32 mm | Rodapé: 12 mm → 63 mm
+    var Y_LIMITE_TAB = H - 63;
+
+    y = drawTableHeader(y);
 
     filtrados.forEach(function(r, i) {
-      // Calcula altura da linha: se tiver ausente, linha maior
       var isBico  = r.tipo === 'bico';
       var tipTxt  = isBico ? 'Bico Fixo' : (r.motivo || 'FT');
-      var dtStr   = r.dataHora ? new Date(r.dataHora).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+      var dtStr   = r.dataHora ? new Date(r.dataHora).toLocaleDateString('pt-BR',
+        { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
 
-      // Monta texto do ausente
       var ausenteTxt = '';
       if (!isBico && r.quemFaltou) {
         var ausentePrefix = 'Ausente';
-        if (r.motivo === 'Cobertura de Férias')    ausentePrefix = '🏖 Férias';
-        else if (r.motivo === 'Suspensão')          ausentePrefix = 'Suspenso';
-        else if (r.motivo === 'Atestado')           ausentePrefix = 'Atestado';
-        else if (r.motivo === 'Afastamento')        ausentePrefix = 'Afastado';
+        if (r.motivo === 'Cobertura de Férias')       ausentePrefix = 'Ferias';
+        else if (r.motivo === 'Suspensão')             ausentePrefix = 'Suspenso';
+        else if (r.motivo === 'Atestado')              ausentePrefix = 'Atestado';
+        else if (r.motivo === 'Afastamento')           ausentePrefix = 'Afastado';
         else if (r.motivo === 'Remanejamento Interno') ausentePrefix = 'Remanejado';
-        else if (r.motivo === 'Folga do Vigia')     ausentePrefix = 'De folga';
+        else if (r.motivo === 'Folga do Vigia')        ausentePrefix = 'De folga';
         ausenteTxt = ausentePrefix + ': ' + r.quemFaltou;
       }
 
-      var rowH = ausenteTxt ? 15 : 10;
+      var rowH = ausenteTxt ? ROW_H_AUS : ROW_H_BASE;
 
-      if (y + rowH > 275) {
+      // ── Nova página se necessário ─────────────────────────────────────
+      if (y + rowH > Y_LIMITE_TAB) {
+        // Rodapé parcial da página atual
+        doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.3);
+        doc.line(10, H - 12, W - 10, H - 12);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(160, 170, 185);
+        doc.text('PJ Tecnologia e Sistemas  |  Recibo gerado em: ' + dataHoje,
+          105, H - 8, { align: 'center' });
+
         doc.addPage();
-        doc.setFillColor(245, 248, 255); doc.rect(0, 0, 210, 297, 'F');
+        fundoFolha();
         y = 15;
-        // repete cabeçalho
-        doc.setFillColor(22, 30, 50); doc.rect(10, y, 190, 9, 'F');
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(200, 215, 240);
-        doc.text('DATA', COL_DATE, y + 5.5);
-        doc.text('POSTO', COL_POSTO, y + 5.5);
-        doc.text('MOTIVO / AUSENTE', COL_TIP, y + 5.5);
-        doc.text('HORÁRIO', COL_HOR, y + 5.5);
-        doc.text('VALOR', COL_VAL, y + 5.5, { align: 'right' });
-        y += 9;
+        y = drawTableHeader(y);
       }
 
+      // ── Fundo zebrado ─────────────────────────────────────────────────
       var even = i % 2 === 0;
       doc.setFillColor(even ? 250 : 255, even ? 252 : 255, even ? 255 : 255);
       doc.setDrawColor(220, 225, 235); doc.setLineWidth(0.2);
       doc.rect(10, y, 190, rowH, 'FD');
 
-      // Linha base de texto dentro da célula
-      var textY = ausenteTxt ? y + 5.5 : y + 6.5;
+      var textY = ausenteTxt ? y + 5 : y + (ROW_H_BASE * 0.65);
 
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(30, 40, 65);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(30, 40, 65);
       doc.text(dtStr, COL_DATE, textY);
-      doc.text(doc.splitTextToSize(r.posto || '—', 58)[0], COL_POSTO, textY);
+      doc.text(doc.splitTextToSize(r.posto || '—', 56)[0], COL_POSTO, textY);
       doc.text(doc.splitTextToSize(tipTxt, 44)[0], COL_TIP, textY);
-      doc.text(doc.splitTextToSize(r.horario || '—', 44)[0], COL_HOR, textY);
+      doc.text(doc.splitTextToSize(r.horario || '—', 40)[0], COL_HOR, textY);
       doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 120, 60);
       doc.text('R$ ' + (r.valor || 0).toFixed(2).replace('.', ','), COL_VAL, textY, { align: 'right' });
 
-      // Segunda linha: ausente (em amarelo/laranja)
       if (ausenteTxt) {
-        doc.setFont('helvetica', 'italic'); doc.setFontSize(6.8); doc.setTextColor(160, 100, 10);
-        doc.text(doc.splitTextToSize(ausenteTxt, 88)[0], COL_TIP, y + 11.5);
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(6.2); doc.setTextColor(160, 100, 10);
+        doc.text(doc.splitTextToSize(ausenteTxt, 90)[0], COL_TIP, y + ROW_H_AUS - 3.5);
       }
 
       y += rowH;
     });
 
-    // Total
-    y += 4;
+    // ── Total ──────────────────────────────────────────────────────────────
+    y += 3;
     doc.setFillColor(255, 250, 220); doc.setDrawColor(200, 180, 40); doc.setLineWidth(0.3);
-    doc.rect(10, y, 190, 10, 'FD');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(120, 80, 0);
-    doc.text('TOTAL A RECEBER', 18, y + 6.5);
+    doc.rect(10, y, 190, 9, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(120, 80, 0);
+    doc.text('TOTAL A RECEBER', 17, y + 6);
     doc.setTextColor(20, 120, 60);
-    doc.text('R$ ' + totalValor.toFixed(2).replace('.', ','), COL_VAL, y + 6.5, { align: 'right' });
-    y += 18;
+    doc.text('R$ ' + totalValor.toFixed(2).replace('.', ','), COL_VAL, y + 6, { align: 'right' });
+    y += 13;
 
-    // Declaração
-    if (y + 60 > 275) { doc.addPage(); doc.setFillColor(245,248,255); doc.rect(0,0,210,297,'F'); y = 20; }
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(60, 70, 90);
-    doc.text('Eu, ' + colabNome + ', declaro que recebi o valor total de R$ ' + totalValor.toFixed(2).replace('.', ','), 105, y, { align: 'center' });
-    y += 6;
+    // ── Declaração ─────────────────────────────────────────────────────────
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60, 70, 90);
+    doc.text('Eu, ' + colabNome + ', declaro que recebi o valor total de R$ ' +
+      totalValor.toFixed(2).replace('.', ','), 105, y, { align: 'center' });
+    y += 5;
     doc.text('referente aos lançamentos descritos acima.', 105, y, { align: 'center' });
-    y += 16;
+    y += 10;
 
-    // Assinatura
+    // ── Assinatura compacta ────────────────────────────────────────────────
     doc.setFillColor(255, 255, 255); doc.setDrawColor(180, 185, 200); doc.setLineWidth(0.5);
-    doc.roundedRect(25, y, 160, 40, 3, 3, 'FD');
+    doc.roundedRect(25, y, 160, 30, 3, 3, 'FD');
     doc.setDrawColor(60, 70, 100); doc.setLineWidth(0.7);
-    doc.line(40, y + 28, 170, y + 28);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80, 90, 120);
-    doc.text('ASSINATURA DO COLABORADOR', 105, y + 33, { align: 'center' });
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(30, 40, 70);
-    doc.text(colabNome, 105, y + 37, { align: 'center' });
-    doc.setFontSize(7.5); doc.setTextColor(130, 140, 160);
-    doc.text('Data: ______ / ______ / __________', 105, y + 44, { align: 'center' });
+    doc.line(42, y + 20, 168, y + 20);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(80, 90, 120);
+    doc.text('ASSINATURA DO COLABORADOR', 105, y + 24, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(30, 40, 70);
+    doc.text(colabNome, 105, y + 28, { align: 'center' });
+    doc.setFontSize(7); doc.setTextColor(130, 140, 160);
+    doc.text('Data: ______ / ______ / __________', 105, y + 33, { align: 'center' });
 
-    // Rodapé
+    // ── Rodapé em todas as páginas ─────────────────────────────────────────
     var totalPgs = doc.internal.getNumberOfPages();
     for (var pg = 1; pg <= totalPgs; pg++) {
       doc.setPage(pg);
-      doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.3); doc.line(10, 280, W - 10, 280);
+      doc.setDrawColor(200, 210, 225); doc.setLineWidth(0.3);
+      doc.line(10, H - 12, W - 10, H - 12);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(160, 170, 185);
-      doc.text('PJ Tecnologia e Sistemas  |  Recibo gerado em: ' + dataHoje, 105, 285, { align: 'center' });
-      doc.text('Pág. ' + pg + ' / ' + totalPgs, 195, 285, { align: 'right' });
+      doc.text('PJ Tecnologia e Sistemas  |  Recibo gerado em: ' + dataHoje,
+        105, H - 8, { align: 'center' });
+      doc.text('Pág. ' + pg + ' / ' + totalPgs, W - 10, H - 8, { align: 'right' });
     }
 
-    var nomeArq = 'ReciboPagamento_' + colabNome.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') + '_' + dataHoje.replace(/\//g, '-') + '.pdf';
+    var nomeArq = 'ReciboPagamento_' + colabNome.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') +
+      '_' + dataHoje.replace(/\//g, '-') + '.pdf';
     doc.save(nomeArq);
     showToast('🧾 Recibo consolidado gerado!', 'success');
   }
