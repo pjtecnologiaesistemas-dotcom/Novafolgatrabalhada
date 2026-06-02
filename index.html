@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nova Folga Trabalhada (FT)</title>
 
+<!-- ── PWA ── -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f7b731">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FT">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(function(reg) { console.log('SW registrado:', reg.scope); })
+        .catch(function(err) { console.warn('SW falhou:', err); });
+    });
+  }
+</script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -7335,9 +7352,15 @@ var FIRESTORE_DOC_ID     = 'dados';
       var raw = localStorage.getItem(LS_CONFIG);
       if (raw) {
         var p = JSON.parse(raw);
-        if (!Array.isArray(p.postos))            p.postos       = DEFAULT_CONFIG.postos.slice();
-        if (typeof p.alertarDia   !== 'boolean') p.alertarDia   = true;
-        if (typeof p.alertarNoite !== 'boolean') p.alertarNoite = true;
+        if (!Array.isArray(p.postos))            p.postos        = DEFAULT_CONFIG.postos.slice();
+        if (typeof p.alertarDia   !== 'boolean') p.alertarDia    = true;
+        if (typeof p.alertarNoite !== 'boolean') p.alertarNoite  = true;
+        if (typeof p.postosInativos !== 'object' || Array.isArray(p.postosInativos))
+          p.postosInativos = {};
+        if (typeof p.postosTurnoInativo !== 'object' || Array.isArray(p.postosTurnoInativo))
+          p.postosTurnoInativo = {};
+        if (typeof p.postosEscalaDia !== 'object' || Array.isArray(p.postosEscalaDia))
+          p.postosEscalaDia = {};
         return p;
       }
     } catch (e) {}
@@ -7346,6 +7369,81 @@ var FIRESTORE_DOC_ID     = 'dados';
 
   function saveConfig(cfg) {
     try { localStorage.setItem(LS_CONFIG, JSON.stringify(cfg)); } catch (e) {}
+  }
+
+  /* ── Helpers de ativo/inativo por mês ─────────────────────── */
+  function getMesAtual() {
+    var d = new Date();
+    var z = function(n){ return String(n).padStart(2,'0'); };
+    return d.getFullYear() + '-' + z(d.getMonth() + 1);
+  }
+
+  function postoAtivoEsteMes(cfg, posto) {
+    if (!cfg.postosInativos) return true;
+    return cfg.postosInativos[posto] !== getMesAtual();
+  }
+
+  function togglePostoMes(posto) {
+    var cfg = loadConfig();
+    if (!cfg.postosInativos) cfg.postosInativos = {};
+    var mes = getMesAtual();
+    if (cfg.postosInativos[posto] === mes) {
+      delete cfg.postosInativos[posto];
+    } else {
+      cfg.postosInativos[posto] = mes;
+    }
+    saveConfig(cfg);
+    renderConfigPostos();
+    renderCadAlertasPostos();
+    renderBicoPostosMonitorados();
+    updateHeaderBadge();
+  }
+
+  /* ── Helpers de alerta por turno/posto ──────────────────── */
+  function postoAlertaDia(cfg, posto) {
+    if (!cfg.postosTurnoInativo) return true;
+    return cfg.postosTurnoInativo[posto + '__dia'] !== true;
+  }
+  function postoAlertaNoite(cfg, posto) {
+    if (!cfg.postosTurnoInativo) return true;
+    return cfg.postosTurnoInativo[posto + '__noite'] !== true;
+  }
+  function togglePostoTurno(posto, turno) { // turno: 'dia' | 'noite'
+    var cfg = loadConfig();
+    if (!cfg.postosTurnoInativo) cfg.postosTurnoInativo = {};
+    var key = posto + '__' + turno;
+    cfg.postosTurnoInativo[key] = !cfg.postosTurnoInativo[key];
+    saveConfig(cfg);
+    renderConfigPostos();
+    renderCadAlertasPostos();
+    renderBicoPostosMonitorados();
+    updateHeaderBadge();
+  }
+
+  /* ── Helpers de escala par/ímpar por posto ──────────────── */
+  // Valores: 'todo' (padrão), 'par', 'impar'
+  function getEscalaDiaPosto(cfg, posto) {
+    if (!cfg.postosEscalaDia) return 'todo';
+    return cfg.postosEscalaDia[posto] || 'todo';
+  }
+  function setEscalaDiaPosto(posto, valor) { // valor: 'todo' | 'par' | 'impar'
+    var cfg = loadConfig();
+    if (!cfg.postosEscalaDia) cfg.postosEscalaDia = {};
+    cfg.postosEscalaDia[posto] = valor;
+    saveConfig(cfg);
+    renderConfigPostos();
+    renderCadAlertasPostos();
+    renderBicoPostosMonitorados();
+    updateHeaderBadge();
+  }
+  function escalaDiaPermite(cfg, posto, dataRef) {
+    var regra = getEscalaDiaPosto(cfg, posto);
+    if (regra === 'todo') return true;
+    var dia = parseInt((dataRef || '').split('-')[2], 10);
+    if (isNaN(dia)) return true;
+    if (regra === 'par')   return dia % 2 === 0;
+    if (regra === 'impar') return dia % 2 !== 0;
+    return true;
   }
 
   /* ── Helpers ───────────────────────────────────────────── */
@@ -7446,6 +7544,13 @@ var FIRESTORE_DOC_ID     = 'dados';
       /* Aplica regra especial de FT (ex: dias ímpares) */
       if (regraFT && !regraFT(c.dataRef)) return;
 
+      /* Aplica regra de par/ímpar configurada pelo usuário (sobrescreve regraFT) */
+      var cfgCheck = loadConfig();
+      var regraUser = getEscalaDiaPosto(cfgCheck, posto);
+      if (regraUser !== 'todo') {
+        if (!escalaDiaPermite(cfgCheck, posto, c.dataRef)) return;
+      }
+
       ativos.push({
         posto:   posto,
         periodo: t.per,
@@ -7472,11 +7577,16 @@ var FIRESTORE_DOC_ID     = 'dados';
     var pendencias = [];
 
     cfg.postos.forEach(function (posto) {
+      // ── Pula posto desativado neste mês ──
+      if (!postoAtivoEsteMes(cfg, posto)) return;
+
       var turnos = turnosAtivosNoPosto(posto);
 
       turnos.forEach(function (turno) {
         if (turno.periodo === 'dia'   && !cfg.alertarDia)   return;
         if (turno.periodo === 'noite' && !cfg.alertarNoite) return;
+        if (turno.periodo === 'dia'   && !postoAlertaDia(cfg, posto))   return;
+        if (turno.periodo === 'noite' && !postoAlertaNoite(cfg, posto)) return;
 
         /* Hora de entrada do turno ativo segundo a escala (ex: 16 na sexta) */
         var hEntrada = Math.floor(turno.entrada / 60);
@@ -7900,6 +8010,30 @@ var FIRESTORE_DOC_ID     = 'dados';
     });
   }
 
+  /* ── Helper: cria botões Par/Ímpar/Todo para um posto ─── */
+  function makeEscalaDiaButtons(cfg, posto) {
+    var atual = getEscalaDiaPosto(cfg, posto);
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:3px;';
+    [
+      { val: 'par',   label: '● Par',   title: 'Alertar apenas em dias PARES'   },
+      { val: 'impar', label: '○ Ímpar', title: 'Alertar apenas em dias ÍMPARES' },
+      { val: 'todo',  label: '◉ Todo',  title: 'Alertar todos os dias'          }
+    ].forEach(function(op) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.title = op.title;
+      btn.textContent = op.label;
+      var on = (atual === op.val);
+      btn.style.cssText = 'border:1px solid;border-radius:6px;padding:2px 6px;font-size:.68rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .15s;' +
+        (on ? 'background:rgba(69,170,242,.22);color:#45aaf2;border-color:rgba(69,170,242,.5);'
+            : 'background:rgba(139,151,176,.07);color:#4a5568;border-color:#2a3347;');
+      (function(v){ btn.onclick = function(){ setEscalaDiaPosto(posto, v); }; })(op.val);
+      wrap.appendChild(btn);
+    });
+    return wrap;
+  }
+
   /* ── Renderiza lista de postos na config ───────────────── */
   function renderConfigPostos() {
     var cfg  = loadConfig();
@@ -7913,17 +8047,29 @@ var FIRESTORE_DOC_ID     = 'dados';
     }
 
     cfg.postos.forEach(function (posto, idx) {
+      var ativo = postoAtivoEsteMes(cfg, posto);
       var row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid #2a3347;border-radius:10px;padding:10px 14px;';
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid ' +
+        (ativo ? '#2a3347' : 'rgba(252,92,101,.3)') + ';border-radius:10px;padding:8px 12px;opacity:' + (ativo ? '1' : '0.6') + ';';
 
       var lbl = document.createElement('span');
-      lbl.style.cssText = 'flex:1;color:#e8edf5;font-size:.9rem;';
+      lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;';
       lbl.textContent = posto;
 
-      var btn = document.createElement('button');
-      btn.style.cssText = 'border:none;background:rgba(252,92,101,.15);color:#fc5c65;border-radius:7px;padding:5px 10px;font-size:.82rem;font-weight:700;cursor:pointer;';
-      btn.textContent = '✕';
-      btn.onclick = function () {
+      // Toggle ativo este mês
+      var toggleBtn = document.createElement('button');
+      toggleBtn.title = ativo ? 'Desativar este mês' : 'Ativar este mês';
+      toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:4px 9px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        (ativo
+          ? 'background:rgba(38,222,129,.15);color:#26de81;'
+          : 'background:rgba(252,92,101,.15);color:#fc5c65;');
+      toggleBtn.textContent = ativo ? '✅ Ativo' : '⏸ Inativo';
+      toggleBtn.onclick = function() { togglePostoMes(posto); };
+
+      var btnDel = document.createElement('button');
+      btnDel.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:4px 8px;font-size:.78rem;font-weight:700;cursor:pointer;';
+      btnDel.textContent = '✕';
+      btnDel.onclick = function () {
         cfg.postos.splice(idx, 1);
         saveConfig(cfg);
         renderConfigPostos();
@@ -7931,7 +8077,33 @@ var FIRESTORE_DOC_ID     = 'dados';
       };
 
       row.appendChild(lbl);
-      row.appendChild(btn);
+
+      // Botões Par/Ímpar/Todo
+      row.appendChild(makeEscalaDiaButtons(cfg, posto));
+
+      // Botões ☀️ Dia / 🌙 Noite por posto
+      var btnDia2 = document.createElement('button');
+      var diaOn = postoAlertaDia(cfg, posto);
+      btnDia2.type = 'button';
+      btnDia2.title = diaOn ? 'Desativar alerta Dia neste posto' : 'Ativar alerta Dia neste posto';
+      btnDia2.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        (diaOn ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+      btnDia2.textContent = '☀️';
+      (function(p){ btnDia2.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
+
+      var btnNoite2 = document.createElement('button');
+      var noiteOn = postoAlertaNoite(cfg, posto);
+      btnNoite2.type = 'button';
+      btnNoite2.title = noiteOn ? 'Desativar alerta Noite neste posto' : 'Ativar alerta Noite neste posto';
+      btnNoite2.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        (noiteOn ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+      btnNoite2.textContent = '🌙';
+      (function(p){ btnNoite2.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
+
+      row.appendChild(btnDia2);
+      row.appendChild(btnNoite2);
+      row.appendChild(toggleBtn);
+      row.appendChild(btnDel);
       list.appendChild(row);
     });
   }
@@ -8084,39 +8256,76 @@ var FIRESTORE_DOC_ID     = 'dados';
     }
 
     cfg.postos.forEach(function(posto, idx) {
+      var ativo = postoAtivoEsteMes(cfg, posto);
       var row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid #2a3347;border-radius:10px;padding:10px 14px;';
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid ' +
+        (ativo ? '#2a3347' : 'rgba(252,92,101,.25)') + ';border-radius:10px;padding:8px 12px;opacity:' + (ativo ? '1' : '0.6') + ';';
 
       var dot = document.createElement('span');
-      dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#45aaf2;flex-shrink:0;';
+      dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:' + (ativo ? '#45aaf2' : '#fc5c65') + ';flex-shrink:0;';
 
       var lbl = document.createElement('span');
-      lbl.style.cssText = 'flex:1;color:#e8edf5;font-size:.9rem;';
+      lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;';
       lbl.textContent = posto;
+
+      // Toggle ativo/inativo este mês
+      var toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.title = ativo ? 'Desativar alerta este mês' : 'Ativar alerta este mês';
+      toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:4px 9px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        (ativo ? 'background:rgba(38,222,129,.15);color:#26de81;' : 'background:rgba(252,92,101,.15);color:#fc5c65;');
+      toggleBtn.textContent = ativo ? '✅ Ativo' : '⏸ Inativo';
+      toggleBtn.onclick = function() { togglePostoMes(posto); };
 
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.style.cssText = 'border:none;background:rgba(252,92,101,.15);color:#fc5c65;border-radius:7px;padding:5px 10px;font-size:.82rem;font-weight:700;cursor:pointer;transition:background .2s;';
+      btn.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:4px 8px;font-size:.78rem;font-weight:700;cursor:pointer;';
       btn.textContent = '✕';
       btn.title = 'Remover posto monitorado';
       btn.onclick = function() {
         cfg.postos.splice(idx, 1);
         saveConfig(cfg);
         renderBicoPostosMonitorados();
-        renderConfigPostos(); // sincroniza com modal de config
+        renderConfigPostos();
+        renderCadAlertasPostos();
         updateHeaderBadge();
         if (typeof window.showToast === 'function') window.showToast('🗑️ Posto removido dos monitorados.', 'error');
       };
 
       row.appendChild(dot);
       row.appendChild(lbl);
+
+      // Botões Par/Ímpar/Todo
+      row.appendChild(makeEscalaDiaButtons(cfg, posto));
+
+      // Botões ☀️ / 🌙 por posto
+      var bD = document.createElement('button');
+      var dAtivo = postoAlertaDia(cfg, posto);
+      bD.type = 'button';
+      bD.title = dAtivo ? 'Desativar alerta Dia' : 'Ativar alerta Dia';
+      bD.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        (dAtivo ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+      bD.textContent = '☀️';
+      (function(p){ bD.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
+
+      var bN = document.createElement('button');
+      var nAtivo = postoAlertaNoite(cfg, posto);
+      bN.type = 'button';
+      bN.title = nAtivo ? 'Desativar alerta Noite' : 'Ativar alerta Noite';
+      bN.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        (nAtivo ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+      bN.textContent = '🌙';
+      (function(p){ bN.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
+
+      row.appendChild(bD);
+      row.appendChild(bN);
+      row.appendChild(toggleBtn);
       row.appendChild(btn);
       list.appendChild(row);
     });
   }
 
   function initBicoPostosMonitoradosCard() {
-    var btnAdd     = document.getElementById('btn-bico-add-posto-monitorado');
     var addWrap    = document.getElementById('bico-add-posto-mon-wrap');
     var addInput   = document.getElementById('bico-add-posto-mon-input');
     var btnSalvar  = document.getElementById('btn-bico-add-posto-mon-salvar');
@@ -8208,19 +8417,30 @@ var FIRESTORE_DOC_ID     = 'dados';
       list.innerHTML = '<div style="color:#8b97b0;font-size:.8rem;text-align:center;padding:6px 0;">Nenhum posto monitorado.</div>';
     } else {
       cfg.postos.forEach(function(posto, idx) {
+        var ativo = postoAtivoEsteMes(cfg, posto);
         var row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid #2a3347;border-radius:10px;padding:10px 14px;';
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid ' +
+          (ativo ? '#2a3347' : 'rgba(252,92,101,.25)') + ';border-radius:10px;padding:8px 12px;opacity:' + (ativo ? '1' : '0.6') + ';';
 
         var dot = document.createElement('span');
-        dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#fc5c65;flex-shrink:0;';
+        dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:' + (ativo ? '#26de81' : '#fc5c65') + ';flex-shrink:0;';
 
         var lbl = document.createElement('span');
-        lbl.style.cssText = 'flex:1;color:#e8edf5;font-size:.9rem;';
+        lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;';
         lbl.textContent = posto;
+
+        // Toggle ativo/inativo este mês
+        var toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.title = ativo ? 'Desativar alerta este mês' : 'Ativar alerta este mês';
+        toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:4px 9px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+          (ativo ? 'background:rgba(38,222,129,.15);color:#26de81;' : 'background:rgba(252,92,101,.15);color:#fc5c65;');
+        toggleBtn.textContent = ativo ? '✅ Ativo' : '⏸ Inativo';
+        toggleBtn.onclick = function() { togglePostoMes(posto); };
 
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.style.cssText = 'border:none;background:rgba(252,92,101,.15);color:#fc5c65;border-radius:7px;padding:5px 10px;font-size:.82rem;font-weight:700;cursor:pointer;';
+        btn.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:4px 8px;font-size:.78rem;font-weight:700;cursor:pointer;';
         btn.textContent = '✕';
         btn.title = 'Remover posto monitorado';
         btn.onclick = function() {
@@ -8236,6 +8456,32 @@ var FIRESTORE_DOC_ID     = 'dados';
 
         row.appendChild(dot);
         row.appendChild(lbl);
+
+        // Botões Par/Ímpar/Todo
+        row.appendChild(makeEscalaDiaButtons(cfg, posto));
+
+        // Botões ☀️ / 🌙 por posto
+        var bDia = document.createElement('button');
+        var dOn = postoAlertaDia(cfg, posto);
+        bDia.type = 'button';
+        bDia.title = dOn ? 'Desativar alerta Dia' : 'Ativar alerta Dia';
+        bDia.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+          (dOn ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+        bDia.textContent = '☀️';
+        (function(p){ bDia.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
+
+        var bNoite = document.createElement('button');
+        var nOn = postoAlertaNoite(cfg, posto);
+        bNoite.type = 'button';
+        bNoite.title = nOn ? 'Desativar alerta Noite' : 'Ativar alerta Noite';
+        bNoite.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+          (nOn ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+        bNoite.textContent = '🌙';
+        (function(p){ bNoite.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
+
+        row.appendChild(bDia);
+        row.appendChild(bNoite);
+        row.appendChild(toggleBtn);
         row.appendChild(btn);
         list.appendChild(row);
       });
@@ -8245,7 +8491,8 @@ var FIRESTORE_DOC_ID     = 'dados';
     var badge = document.getElementById('cad-alerta-badge-count');
     if (badge) {
       if (cfg.postos.length) {
-        badge.textContent = cfg.postos.length + ' posto' + (cfg.postos.length > 1 ? 's' : '');
+        var ativos = cfg.postos.filter(function(p){ return postoAtivoEsteMes(cfg, p); }).length;
+        badge.textContent = ativos + '/' + cfg.postos.length + ' ativo' + (ativos !== 1 ? 's' : '');
         badge.style.display = 'inline-block';
       } else {
         badge.style.display = 'none';
