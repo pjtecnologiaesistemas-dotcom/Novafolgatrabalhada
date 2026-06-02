@@ -8014,20 +8014,20 @@ var FIRESTORE_DOC_ID     = 'dados';
   function makeEscalaDiaButtons(cfg, posto) {
     var atual = getEscalaDiaPosto(cfg, posto);
     var wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;gap:3px;';
+    wrap.style.cssText = 'display:flex;gap:4px;';
     [
-      { val: 'par',   label: '● Par',   title: 'Alertar apenas em dias PARES'   },
-      { val: 'impar', label: '○ Ímpar', title: 'Alertar apenas em dias ÍMPARES' },
-      { val: 'todo',  label: '◉ Todo',  title: 'Alertar todos os dias'          }
+      { val: 'par',   label: 'Par',    icon: '\u25CF', title: 'Alertar apenas dias PARES (2, 4, 6\u2026)'    },
+      { val: 'impar', label: '\u00CDmpar', icon: '\u25CB', title: 'Alertar apenas dias \u00CDMPAREs (1, 3, 5\u2026)' },
+      { val: 'todo',  label: 'Todo',   icon: '\u25C9', title: 'Alertar todos os dias do m\u00EAs'             }
     ].forEach(function(op) {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.title = op.title;
-      btn.textContent = op.label;
+      btn.textContent = op.icon + ' ' + op.label;
       var on = (atual === op.val);
-      btn.style.cssText = 'border:1px solid;border-radius:6px;padding:2px 6px;font-size:.68rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .15s;' +
-        (on ? 'background:rgba(69,170,242,.22);color:#45aaf2;border-color:rgba(69,170,242,.5);'
-            : 'background:rgba(139,151,176,.07);color:#4a5568;border-color:#2a3347;');
+      btn.style.cssText = 'flex:1;border:1px solid;border-radius:7px;padding:4px 0;font-size:.73rem;font-weight:700;cursor:pointer;transition:background .15s;' +
+        (on ? 'background:rgba(69,170,242,.22);color:#45aaf2;border-color:rgba(69,170,242,.55);'
+            : 'background:rgba(139,151,176,.07);color:#566278;border-color:#2a3347;');
       (function(v){ btn.onclick = function(){ setEscalaDiaPosto(posto, v); }; })(op.val);
       wrap.appendChild(btn);
     });
@@ -8049,61 +8049,60 @@ var FIRESTORE_DOC_ID     = 'dados';
     cfg.postos.forEach(function (posto, idx) {
       var ativo = postoAtivoEsteMes(cfg, posto);
       var row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid ' +
+      row.style.cssText = 'display:flex;flex-direction:column;gap:6px;background:#10151e;border:1px solid ' +
         (ativo ? '#2a3347' : 'rgba(252,92,101,.3)') + ';border-radius:10px;padding:8px 12px;opacity:' + (ativo ? '1' : '0.6') + ';';
 
+      // ── Linha 1: nome + ☀️ 🌙 + ativo + ✕ ──
+      var linha1 = document.createElement('div');
+      linha1.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
       var lbl = document.createElement('span');
-      lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;';
+      lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;font-weight:600;';
       lbl.textContent = posto;
 
-      // Toggle ativo este mês
+      var diaOn = postoAlertaDia(cfg, posto);
+      var btnDia2 = document.createElement('button');
+      btnDia2.type = 'button';
+      btnDia2.title = diaOn ? 'Desativar alerta Dia' : 'Ativar alerta Dia';
+      btnDia2.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;cursor:pointer;' +
+        (diaOn ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+      btnDia2.textContent = '\u2600\uFE0F';
+      (function(p){ btnDia2.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
+
+      var noiteOn = postoAlertaNoite(cfg, posto);
+      var btnNoite2 = document.createElement('button');
+      btnNoite2.type = 'button';
+      btnNoite2.title = noiteOn ? 'Desativar alerta Noite' : 'Ativar alerta Noite';
+      btnNoite2.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;cursor:pointer;' +
+        (noiteOn ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+      btnNoite2.textContent = '\uD83C\uDF19';
+      (function(p){ btnNoite2.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
+
       var toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
       toggleBtn.title = ativo ? 'Desativar este mês' : 'Ativar este mês';
-      toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:4px 9px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
-        (ativo
-          ? 'background:rgba(38,222,129,.15);color:#26de81;'
-          : 'background:rgba(252,92,101,.15);color:#fc5c65;');
-      toggleBtn.textContent = ativo ? '✅ Ativo' : '⏸ Inativo';
+      toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:3px 8px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        (ativo ? 'background:rgba(38,222,129,.15);color:#26de81;' : 'background:rgba(252,92,101,.15);color:#fc5c65;');
+      toggleBtn.textContent = ativo ? '\u2705' : '\u23F8';
       toggleBtn.onclick = function() { togglePostoMes(posto); };
 
       var btnDel = document.createElement('button');
-      btnDel.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:4px 8px;font-size:.78rem;font-weight:700;cursor:pointer;';
-      btnDel.textContent = '✕';
-      btnDel.onclick = function () {
-        cfg.postos.splice(idx, 1);
-        saveConfig(cfg);
-        renderConfigPostos();
-        updateHeaderBadge();
-      };
+      btnDel.type = 'button';
+      btnDel.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:3px 7px;font-size:.78rem;font-weight:700;cursor:pointer;';
+      btnDel.textContent = '\u2715';
+      btnDel.onclick = function () { cfg.postos.splice(idx, 1); saveConfig(cfg); renderConfigPostos(); updateHeaderBadge(); };
 
-      row.appendChild(lbl);
+      linha1.appendChild(lbl);
+      linha1.appendChild(btnDia2);
+      linha1.appendChild(btnNoite2);
+      linha1.appendChild(toggleBtn);
+      linha1.appendChild(btnDel);
 
-      // Botões Par/Ímpar/Todo
-      row.appendChild(makeEscalaDiaButtons(cfg, posto));
+      // ── Linha 2: Par / Ímpar / Todo ──
+      var linha2 = makeEscalaDiaButtons(cfg, posto);
 
-      // Botões ☀️ Dia / 🌙 Noite por posto
-      var btnDia2 = document.createElement('button');
-      var diaOn = postoAlertaDia(cfg, posto);
-      btnDia2.type = 'button';
-      btnDia2.title = diaOn ? 'Desativar alerta Dia neste posto' : 'Ativar alerta Dia neste posto';
-      btnDia2.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
-        (diaOn ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
-      btnDia2.textContent = '☀️';
-      (function(p){ btnDia2.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
-
-      var btnNoite2 = document.createElement('button');
-      var noiteOn = postoAlertaNoite(cfg, posto);
-      btnNoite2.type = 'button';
-      btnNoite2.title = noiteOn ? 'Desativar alerta Noite neste posto' : 'Ativar alerta Noite neste posto';
-      btnNoite2.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
-        (noiteOn ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
-      btnNoite2.textContent = '🌙';
-      (function(p){ btnNoite2.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
-
-      row.appendChild(btnDia2);
-      row.appendChild(btnNoite2);
-      row.appendChild(toggleBtn);
-      row.appendChild(btnDel);
+      row.appendChild(linha1);
+      row.appendChild(linha2);
       list.appendChild(row);
     });
   }
@@ -8258,69 +8257,68 @@ var FIRESTORE_DOC_ID     = 'dados';
     cfg.postos.forEach(function(posto, idx) {
       var ativo = postoAtivoEsteMes(cfg, posto);
       var row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid ' +
+      row.style.cssText = 'display:flex;flex-direction:column;gap:6px;background:#10151e;border:1px solid ' +
         (ativo ? '#2a3347' : 'rgba(252,92,101,.25)') + ';border-radius:10px;padding:8px 12px;opacity:' + (ativo ? '1' : '0.6') + ';';
 
       var dot = document.createElement('span');
       dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:' + (ativo ? '#45aaf2' : '#fc5c65') + ';flex-shrink:0;';
 
       var lbl = document.createElement('span');
-      lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;';
+      lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;font-weight:600;';
       lbl.textContent = posto;
 
-      // Toggle ativo/inativo este mês
+      var dAtivo = postoAlertaDia(cfg, posto);
+      var bD = document.createElement('button');
+      bD.type = 'button';
+      bD.title = dAtivo ? 'Desativar alerta Dia' : 'Ativar alerta Dia';
+      bD.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;cursor:pointer;' +
+        (dAtivo ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+      bD.textContent = '\u2600\uFE0F';
+      (function(p){ bD.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
+
+      var nAtivo = postoAlertaNoite(cfg, posto);
+      var bN = document.createElement('button');
+      bN.type = 'button';
+      bN.title = nAtivo ? 'Desativar alerta Noite' : 'Ativar alerta Noite';
+      bN.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;cursor:pointer;' +
+        (nAtivo ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+      bN.textContent = '\uD83C\uDF19';
+      (function(p){ bN.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
+
       var toggleBtn = document.createElement('button');
       toggleBtn.type = 'button';
       toggleBtn.title = ativo ? 'Desativar alerta este mês' : 'Ativar alerta este mês';
-      toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:4px 9px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+      toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:3px 8px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
         (ativo ? 'background:rgba(38,222,129,.15);color:#26de81;' : 'background:rgba(252,92,101,.15);color:#fc5c65;');
-      toggleBtn.textContent = ativo ? '✅ Ativo' : '⏸ Inativo';
+      toggleBtn.textContent = ativo ? '\u2705' : '\u23F8';
       toggleBtn.onclick = function() { togglePostoMes(posto); };
 
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:4px 8px;font-size:.78rem;font-weight:700;cursor:pointer;';
-      btn.textContent = '✕';
+      btn.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:3px 7px;font-size:.78rem;font-weight:700;cursor:pointer;';
+      btn.textContent = '\u2715';
       btn.title = 'Remover posto monitorado';
       btn.onclick = function() {
-        cfg.postos.splice(idx, 1);
-        saveConfig(cfg);
-        renderBicoPostosMonitorados();
-        renderConfigPostos();
-        renderCadAlertasPostos();
-        updateHeaderBadge();
-        if (typeof window.showToast === 'function') window.showToast('🗑️ Posto removido dos monitorados.', 'error');
+        cfg.postos.splice(idx, 1); saveConfig(cfg);
+        renderBicoPostosMonitorados(); renderConfigPostos(); renderCadAlertasPostos(); updateHeaderBadge();
+        if (typeof window.showToast === 'function') window.showToast('\uD83D\uDDD1\uFE0F Posto removido dos monitorados.', 'error');
       };
 
-      row.appendChild(dot);
-      row.appendChild(lbl);
+      // Linha 1: dot + nome + ☀️ 🌙 + ativo + ✕
+      var linha1 = document.createElement('div');
+      linha1.style.cssText = 'display:flex;align-items:center;gap:6px;';
+      linha1.appendChild(dot);
+      linha1.appendChild(lbl);
+      linha1.appendChild(bD);
+      linha1.appendChild(bN);
+      linha1.appendChild(toggleBtn);
+      linha1.appendChild(btn);
 
-      // Botões Par/Ímpar/Todo
-      row.appendChild(makeEscalaDiaButtons(cfg, posto));
+      // Linha 2: Par / Ímpar / Todo
+      var linha2 = makeEscalaDiaButtons(cfg, posto);
 
-      // Botões ☀️ / 🌙 por posto
-      var bD = document.createElement('button');
-      var dAtivo = postoAlertaDia(cfg, posto);
-      bD.type = 'button';
-      bD.title = dAtivo ? 'Desativar alerta Dia' : 'Ativar alerta Dia';
-      bD.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
-        (dAtivo ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
-      bD.textContent = '☀️';
-      (function(p){ bD.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
-
-      var bN = document.createElement('button');
-      var nAtivo = postoAlertaNoite(cfg, posto);
-      bN.type = 'button';
-      bN.title = nAtivo ? 'Desativar alerta Noite' : 'Ativar alerta Noite';
-      bN.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
-        (nAtivo ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
-      bN.textContent = '🌙';
-      (function(p){ bN.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
-
-      row.appendChild(bD);
-      row.appendChild(bN);
-      row.appendChild(toggleBtn);
-      row.appendChild(btn);
+      row.appendChild(linha1);
+      row.appendChild(linha2);
       list.appendChild(row);
     });
   }
@@ -8419,70 +8417,69 @@ var FIRESTORE_DOC_ID     = 'dados';
       cfg.postos.forEach(function(posto, idx) {
         var ativo = postoAtivoEsteMes(cfg, posto);
         var row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;background:#10151e;border:1px solid ' +
+        row.style.cssText = 'display:flex;flex-direction:column;gap:6px;background:#10151e;border:1px solid ' +
           (ativo ? '#2a3347' : 'rgba(252,92,101,.25)') + ';border-radius:10px;padding:8px 12px;opacity:' + (ativo ? '1' : '0.6') + ';';
 
         var dot = document.createElement('span');
         dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:' + (ativo ? '#26de81' : '#fc5c65') + ';flex-shrink:0;';
 
         var lbl = document.createElement('span');
-        lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;';
+        lbl.style.cssText = 'flex:1;color:' + (ativo ? '#e8edf5' : '#8b97b0') + ';font-size:.88rem;font-weight:600;';
         lbl.textContent = posto;
 
-        // Toggle ativo/inativo este mês
+        var dOn = postoAlertaDia(cfg, posto);
+        var bDia = document.createElement('button');
+        bDia.type = 'button';
+        bDia.title = dOn ? 'Desativar alerta Dia' : 'Ativar alerta Dia';
+        bDia.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;cursor:pointer;' +
+          (dOn ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+        bDia.textContent = '\u2600\uFE0F';
+        (function(p){ bDia.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
+
+        var nOn = postoAlertaNoite(cfg, posto);
+        var bNoite = document.createElement('button');
+        bNoite.type = 'button';
+        bNoite.title = nOn ? 'Desativar alerta Noite' : 'Ativar alerta Noite';
+        bNoite.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;cursor:pointer;' +
+          (nOn ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
+        bNoite.textContent = '\uD83C\uDF19';
+        (function(p){ bNoite.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
+
         var toggleBtn = document.createElement('button');
         toggleBtn.type = 'button';
         toggleBtn.title = ativo ? 'Desativar alerta este mês' : 'Ativar alerta este mês';
-        toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:4px 9px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        toggleBtn.style.cssText = 'border:none;border-radius:7px;padding:3px 8px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
           (ativo ? 'background:rgba(38,222,129,.15);color:#26de81;' : 'background:rgba(252,92,101,.15);color:#fc5c65;');
-        toggleBtn.textContent = ativo ? '✅ Ativo' : '⏸ Inativo';
+        toggleBtn.textContent = ativo ? '\u2705' : '\u23F8';
         toggleBtn.onclick = function() { togglePostoMes(posto); };
 
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:4px 8px;font-size:.78rem;font-weight:700;cursor:pointer;';
-        btn.textContent = '✕';
+        btn.style.cssText = 'border:none;background:rgba(139,151,176,.1);color:#8b97b0;border-radius:7px;padding:3px 7px;font-size:.78rem;font-weight:700;cursor:pointer;';
+        btn.textContent = '\u2715';
         btn.title = 'Remover posto monitorado';
         btn.onclick = function() {
-          cfg.postos.splice(idx, 1);
-          saveConfig(cfg);
-          renderCadAlertasPostos();
-          renderCadAlertasToggles();
-          renderBicoPostosMonitorados();
-          renderConfigPostos();
-          updateHeaderBadge();
-          if (typeof window.showToast === 'function') window.showToast('🗑️ Posto removido dos monitorados.', 'error');
+          cfg.postos.splice(idx, 1); saveConfig(cfg);
+          renderCadAlertasPostos(); renderCadAlertasToggles();
+          renderBicoPostosMonitorados(); renderConfigPostos(); updateHeaderBadge();
+          if (typeof window.showToast === 'function') window.showToast('\uD83D\uDDD1\uFE0F Posto removido dos monitorados.', 'error');
         };
 
-        row.appendChild(dot);
-        row.appendChild(lbl);
+        // Linha 1: dot + nome + ☀️ 🌙 + ativo + ✕
+        var linha1 = document.createElement('div');
+        linha1.style.cssText = 'display:flex;align-items:center;gap:6px;';
+        linha1.appendChild(dot);
+        linha1.appendChild(lbl);
+        linha1.appendChild(bDia);
+        linha1.appendChild(bNoite);
+        linha1.appendChild(toggleBtn);
+        linha1.appendChild(btn);
 
-        // Botões Par/Ímpar/Todo
-        row.appendChild(makeEscalaDiaButtons(cfg, posto));
+        // Linha 2: Par / Ímpar / Todo
+        var linha2 = makeEscalaDiaButtons(cfg, posto);
 
-        // Botões ☀️ / 🌙 por posto
-        var bDia = document.createElement('button');
-        var dOn = postoAlertaDia(cfg, posto);
-        bDia.type = 'button';
-        bDia.title = dOn ? 'Desativar alerta Dia' : 'Ativar alerta Dia';
-        bDia.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
-          (dOn ? 'background:rgba(255,210,63,.15);color:#ffd23f;border-color:rgba(255,210,63,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
-        bDia.textContent = '☀️';
-        (function(p){ bDia.onclick = function(){ togglePostoTurno(p,'dia'); }; })(posto);
-
-        var bNoite = document.createElement('button');
-        var nOn = postoAlertaNoite(cfg, posto);
-        bNoite.type = 'button';
-        bNoite.title = nOn ? 'Desativar alerta Noite' : 'Ativar alerta Noite';
-        bNoite.style.cssText = 'border:1px solid;border-radius:7px;padding:3px 7px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;' +
-          (nOn ? 'background:rgba(100,130,255,.15);color:#7c8fff;border-color:rgba(100,130,255,.4);' : 'background:rgba(139,151,176,.08);color:#4a5568;border-color:#2a3347;');
-        bNoite.textContent = '🌙';
-        (function(p){ bNoite.onclick = function(){ togglePostoTurno(p,'noite'); }; })(posto);
-
-        row.appendChild(bDia);
-        row.appendChild(bNoite);
-        row.appendChild(toggleBtn);
-        row.appendChild(btn);
+        row.appendChild(linha1);
+        row.appendChild(linha2);
         list.appendChild(row);
       });
     }
