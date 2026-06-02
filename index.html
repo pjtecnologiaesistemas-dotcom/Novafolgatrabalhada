@@ -8324,12 +8324,13 @@ var FIRESTORE_DOC_ID     = 'dados';
   }
 
   function initBicoPostosMonitoradosCard() {
+    var btnAdd     = document.getElementById('btn-bico-add-posto-monitorado');
     var addWrap    = document.getElementById('bico-add-posto-mon-wrap');
     var addInput   = document.getElementById('bico-add-posto-mon-input');
     var btnSalvar  = document.getElementById('btn-bico-add-posto-mon-salvar');
     var btnCancelar= document.getElementById('btn-bico-add-posto-mon-cancelar');
 
-    if (!btnAdd || !addWrap) return;
+    if (!btnAdd || !addWrap) { renderBicoPostosMonitorados(); return; }
 
     btnAdd.addEventListener('click', function() {
       addWrap.style.display = 'flex';
@@ -8520,7 +8521,7 @@ var FIRESTORE_DOC_ID     = 'dados';
     var btnDia      = document.getElementById('cad-toggle-dia');
     var btnNoite    = document.getElementById('cad-toggle-noite');
 
-    if (!btnAddPosto) return; // aba não existe no DOM
+    if (!btnAddPosto) { renderCadAlertasPostos(); renderCadAlertasToggles(); return; } // aba não existe no DOM
 
     function adicionarPostoCad() {
       var val = (inputPosto ? inputPosto.value : '').trim();
