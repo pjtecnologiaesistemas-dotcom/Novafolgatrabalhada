@@ -2129,6 +2129,12 @@
       <button id="cad-alerta-testar" type="button" style="width:100%;border:1px solid rgba(252,92,101,.4);background:rgba(252,92,101,.08);color:#fc5c65;border-radius:10px;padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;transition:background .2s;letter-spacing:.3px;">
         🔔 Testar Alerta Agora
       </button>
+
+      <!-- Diagnóstico de sincronização -->
+      <button id="btn-diag-sync" type="button" onclick="window.diagSync()" style="margin-top:10px;width:100%;border:1px solid rgba(0,200,248,.35);background:rgba(0,200,248,.07);color:#00c8f8;border-radius:10px;padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;letter-spacing:.3px;">
+        🔧 Diagnóstico &amp; Forçar Sync
+      </button>
+      <div id="diag-sync-log" style="display:none;margin-top:10px;background:#0d1117;border:1px solid #2a3347;border-radius:10px;padding:12px;font-size:.75rem;font-family:monospace;color:#8b97b0;max-height:280px;overflow-y:auto;line-height:1.7;"></div>
     </div>
 
   </div>
@@ -6914,7 +6920,7 @@ var FIRESTORE_DOC_ID     = 'dados';
       });
     }
 
-    // ── Bridge de escrita: saveConfig do módulo de alertas chama esta função ──
+    // ── Bridge de escrita: saveConfig chama esta função após Firebase conectar ──
     window._ftAlertConfigSync = function (cfg) {
       var upd = {};
       upd['ft_alert_config'] = cfg;
@@ -6945,11 +6951,12 @@ var FIRESTORE_DOC_ID     = 'dados';
             var remoto = data['ft_alert_config'];
             var local  = JSON.parse(localStorage.getItem('ft_alert_config') || 'null');
             if (JSON.stringify(remoto) !== JSON.stringify(local)) {
+              window._ftApplyingRemote = true;
               localStorage.setItem('ft_alert_config', JSON.stringify(remoto));
-              // Recarrega painéis se o módulo de alertas já estiver pronto
+              window._ftApplyingRemote = false;
               if (typeof window._ftAlertRender === 'function') window._ftAlertRender();
             }
-          } catch (e) {}
+          } catch (e) { window._ftApplyingRemote = false; }
         }
 
         // Notifica a UI (fromSnapshot=true para não exibir toast)
@@ -7392,8 +7399,8 @@ var FIRESTORE_DOC_ID     = 'dados';
 
   function saveConfig(cfg) {
     try { localStorage.setItem(LS_CONFIG, JSON.stringify(cfg)); } catch (e) {}
-    // Dispara sincronização Firestore via bridge global (injetado pelo módulo Firebase)
-    if (typeof window._ftAlertConfigSync === 'function') {
+    // Envia ao Firestore apenas quando mudança veio do usuário (não de snapshot remoto)
+    if (!window._ftApplyingRemote && typeof window._ftAlertConfigSync === 'function') {
       try { window._ftAlertConfigSync(cfg); } catch (e) {}
     }
   }
@@ -8156,7 +8163,13 @@ var FIRESTORE_DOC_ID     = 'dados';
   /* ── Inicialização ─────────────────────────────────────── */
   function init() {
     carregarEscalasCustomNaMemoria(); // injeta escalas salvas antes de tudo
-    saveConfig(loadConfig()); // garante config padrão
+    // Garante config local SEM publicar no Firestore (evita sobrescrever config de outros dispositivos)
+    (function() {
+      try {
+        var raw = localStorage.getItem('ft_alert_config');
+        if (!raw) { localStorage.setItem('ft_alert_config', JSON.stringify(loadConfig())); }
+      } catch(e) {}
+    }());
 
     var bind = function (id, fn) {
       var el = document.getElementById(id);
@@ -8625,15 +8638,12 @@ var FIRESTORE_DOC_ID     = 'dados';
     openConfig: openConfigModal
   };
 
-  // Expõe funções de render para serem chamadas pelo listener Firestore
+  // Expõe render ao window para o listener Firestore atualizar a UI
   window._ftAlertRender = function () {
     if (typeof renderConfigPostos          === 'function') renderConfigPostos();
     if (typeof renderCadAlertasPostos      === 'function') renderCadAlertasPostos();
     if (typeof renderBicoPostosMonitorados === 'function') renderBicoPostosMonitorados();
   };
-
-  // Bridge: será preenchido pelo módulo Firebase após conexão
-  // window._ftAlertConfigSync = function(cfg) { ... }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -8649,6 +8659,75 @@ function toggleAcc(id) {
   var isOpen = el.classList.contains('open');
   el.classList.toggle('open', !isOpen);
 }
+
+/* ══ DIAGNÓSTICO & FORÇA-SYNC de Postos Monitorados ══ */
+window.diagSync = function () {
+  var log = document.getElementById('diag-sync-log');
+  if (!log) return;
+  log.style.display = 'block';
+  log.innerHTML = '';
+  function line(msg, cor) {
+    var d = document.createElement('div');
+    d.style.color = cor || '#8b97b0';
+    d.textContent = msg;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+  }
+  line('▶ Iniciando diagnóstico...', '#00c8f8');
+  if (typeof firebase === 'undefined') {
+    line('❌ firebase SDK NÃO carregado!', '#fc5c65'); return;
+  }
+  line('✅ firebase SDK carregado', '#26de81');
+  var db;
+  try { db = firebase.firestore(); line('✅ firestore() OK', '#26de81'); }
+  catch(e) { line('❌ firestore() falhou: ' + e.message, '#fc5c65'); return; }
+  if (typeof window._ftAlertConfigSync === 'function') {
+    line('✅ bridge _ftAlertConfigSync presente', '#26de81');
+  } else {
+    line('⚠️ bridge _ftAlertConfigSync AUSENTE — Firebase ainda não conectou', '#f7b731');
+  }
+  var cfgLocal = null;
+  try {
+    cfgLocal = JSON.parse(localStorage.getItem('ft_alert_config') || 'null');
+    if (cfgLocal) {
+      line('✅ Config local: ' + (cfgLocal.postos||[]).length + ' posto(s): ' + (cfgLocal.postos||[]).join(', '), '#26de81');
+    } else {
+      line('⚠️ Config local VAZIA', '#f7b731');
+    }
+  } catch(e) { line('❌ Erro ao ler config local: ' + e.message, '#fc5c65'); }
+  var COL = window.FIRESTORE_COLLECTION || 'folga_trabalhada';
+  var DOC = window.FIRESTORE_DOC_ID     || 'dados';
+  line('🔍 Lendo ' + COL + '/' + DOC + ' no Firestore...', '#00c8f8');
+  db.collection(COL).doc(DOC).get()
+    .then(function(snap) {
+      if (!snap.exists) {
+        line('⚠️ Documento não existe no Firestore ainda', '#f7b731');
+      } else {
+        var data = snap.data();
+        if (data.ft_alert_config) {
+          var postos = (data.ft_alert_config.postos || []);
+          line('✅ Firestore tem ft_alert_config: ' + postos.length + ' posto(s): ' + postos.join(', '), '#26de81');
+        } else {
+          line('⚠️ Firestore NÃO tem ft_alert_config (campo ausente)', '#f7b731');
+        }
+      }
+      if (!cfgLocal) {
+        line('⏭ Sem config local para forçar envio', '#8b97b0'); return;
+      }
+      line('🚀 Forçando gravação da config local no Firestore...', '#00c8f8');
+      return db.collection(COL).doc(DOC).set({ ft_alert_config: cfgLocal }, { merge: true });
+    })
+    .then(function(r) {
+      if (r === undefined) return;
+      line('✅ Gravado no Firestore! Outros dispositivos receberão via onSnapshot.', '#26de81');
+      if (typeof window._ftAlertRender === 'function') window._ftAlertRender();
+    })
+    .catch(function(e) {
+      line('❌ Erro ao gravar no Firestore: ' + e.message, '#fc5c65');
+      line('💡 Verifique as regras de segurança do Firestore', '#f7b731');
+    });
+};
+
 </script>
 
 <!-- ── Footer branding PJ Tecnologia ── -->
