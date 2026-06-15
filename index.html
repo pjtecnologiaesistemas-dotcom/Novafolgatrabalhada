@@ -7748,6 +7748,9 @@ var FIRESTORE_DOC_ID     = 'dados';
     var registros = getBicoRegistros();
     var pendencias = [];
 
+    // ── Data de início do ciclo atual (Novo Ciclo grava este timestamp) ──
+    var cicloInicioTs = parseInt(localStorage.getItem('ft_ciclo_inicio') || '0', 10);
+
     cfg.postos.forEach(function (posto) {
       // ── Pula posto desativado neste mês ──
       if (!postoAtivoEsteMes(cfg, posto)) return;
@@ -7759,6 +7762,12 @@ var FIRESTORE_DOC_ID     = 'dados';
         if (turno.periodo === 'noite' && !cfg.alertarNoite) return;
         if (turno.periodo === 'dia'   && !postoAlertaDia(cfg, posto))   return;
         if (turno.periodo === 'noite' && !postoAlertaNoite(cfg, posto)) return;
+
+        // ── Ignora turnos anteriores ao último Novo Ciclo ──
+        if (cicloInicioTs > 0) {
+          var turnoTs = new Date(turno.dataRef + 'T00:00:00').getTime() + turno.entrada * 60000;
+          if (turnoTs < cicloInicioTs) return;
+        }
 
         /* Hora de entrada do turno ativo segundo a escala (ex: 16 na sexta) */
         var hEntrada = Math.floor(turno.entrada / 60);
@@ -8984,6 +8993,11 @@ async function confirmarNovoCiclo() {
       try { localStorage.setItem(key, JSON.stringify([])); } catch(e) {}
     });
 
+    // Grava timestamp do início do novo ciclo (usado para suprimir alertas de datas anteriores)
+    try { localStorage.setItem('ft_ciclo_inicio', String(Date.now())); } catch(e) {}
+    // Limpa snooze de alertas do ciclo anterior
+    try { localStorage.removeItem('ft_alert_snoozed'); } catch(e) {}
+
     if (window.FT_Store) {
       await FT_Store.set('ft_registros', []);
       await FT_Store.set('ft_bico_fixo', []);
@@ -9040,6 +9054,16 @@ async function confirmarNovoCiclo() {
         try { window[fn](); } catch(e) {}
       }
     });
+
+    // Fecha modal de alertas e remove badge de pendências do header
+    var alertModal = document.getElementById('ft-alert-modal');
+    if (alertModal) alertModal.style.display = 'none';
+    var alertBadge = document.getElementById('ft-pending-header-badge');
+    if (alertBadge) alertBadge.remove();
+    // Atualiza badge do header (deve mostrar 0 pendências agora)
+    if (typeof window.updateHeaderBadge === 'function') {
+      try { window.updateHeaderBadge(); } catch(e) {}
+    }
 
     // ── 5. Fechar modal e notificar ───────────────────────────
     setTimeout(function() {
