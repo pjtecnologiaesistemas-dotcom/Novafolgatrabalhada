@@ -1987,6 +1987,9 @@
   <!-- Badges / indicadores -->
   <div id="header-badges">
     <button class="btn-novo-ciclo" onclick="abrirModalNovoCiclo()">🔄 Novo Ciclo</button>
+    <button class="btn-novo-ciclo" onclick="(window.FTAlertEngine && window.FTAlertEngine.openConfig ? window.FTAlertEngine.openConfig() : (document.getElementById('ft-config-overlay') && (document.getElementById('ft-config-overlay').style.display='flex')))" style="background:linear-gradient(135deg,#45aaf2,#2d98da)">
+      ⚙️ Alertas
+    </button>
     <div class="badge-auto">&#x1F4BE; Offline-first</div>
     <span id="sync-status" class="online" title="Status da conexão">
       <span class="dot"></span><span id="sync-label">Online</span>
