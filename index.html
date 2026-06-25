@@ -7134,8 +7134,12 @@ var FIRESTORE_DOC_ID     = 'dados';
 
     // ── Bridge de escrita: saveConfig chama esta função após Firebase conectar ──
     window._ftAlertConfigSync = function (cfg) {
-      var upd = {};
-      upd['ft_alert_config'] = cfg;
+      var upd = { ft_alert_config: cfg };
+      // Grava ft_escalas_custom junto para manter consistência entre dispositivos
+      try {
+        var esc = JSON.parse(localStorage.getItem('ft_escalas_custom') || '{}');
+        if (Object.keys(esc).length > 0) upd['ft_escalas_custom'] = esc;
+      } catch(e) {}
       db.collection(FIRESTORE_COLLECTION)
         .doc(FIRESTORE_DOC_ID)
         .set(upd, { merge: true })
@@ -7182,33 +7186,37 @@ var FIRESTORE_DOC_ID     = 'dados';
           }
         });
 
+        // Sincroniza ft_alert_config
+        if (data['ft_alert_config'] !== undefined) {
+          var remotoCfg = data['ft_alert_config'];
+          // Sempre aplica: normaliza pela serialização para comparação estável
+          var localRaw  = localStorage.getItem('ft_alert_config') || 'null';
+          var remotoRaw = JSON.stringify(remotoCfg);
+          var localCfg  = null;
+          try { localCfg = JSON.parse(localRaw); } catch(e) {}
+          // Compara postos (principal campo que causa dessincronização)
+          var postosDifere = JSON.stringify((remotoCfg.postos||[]).slice().sort())
+                          !== JSON.stringify(((localCfg||{}).postos||[]).slice().sort());
+          var outroCampo  = JSON.stringify(remotoCfg) !== JSON.stringify(localCfg);
+          if (postosDifere || outroCampo) {
+            window._ftApplyingRemote = true;
+            try { localStorage.setItem('ft_alert_config', remotoRaw); } catch(e) {}
+            window._ftApplyingRemote = false;
+            alertCfgAtualizado = true;
+          }
+        }
+
         // Sincroniza ft_ciclo_inicio (timestamp numérico)
         if (data['ft_ciclo_inicio'] !== undefined) {
           try { localStorage.setItem('ft_ciclo_inicio', String(data['ft_ciclo_inicio'])); } catch(e) {}
         }
 
-        // Sincroniza ft_alert_snoozed (snooze compartilhado entre dispositivos)
+        // Sincroniza ft_alert_snoozed
         if (data['ft_alert_snoozed'] !== undefined) {
           try {
-            if (data['ft_alert_snoozed'] === 0) {
-              localStorage.removeItem('ft_alert_snoozed');
-            } else {
-              localStorage.setItem('ft_alert_snoozed', String(data['ft_alert_snoozed']));
-            }
+            if (!data['ft_alert_snoozed']) localStorage.removeItem('ft_alert_snoozed');
+            else localStorage.setItem('ft_alert_snoozed', String(data['ft_alert_snoozed']));
           } catch(e) {}
-        }
-
-        // Sincroniza ft_alert_config
-        if (data['ft_alert_config'] !== undefined) {
-          var remotoCfg = data['ft_alert_config'];
-          var localCfg  = null;
-          try { localCfg = JSON.parse(localStorage.getItem('ft_alert_config') || 'null'); } catch(e) {}
-          if (JSON.stringify(remotoCfg) !== JSON.stringify(localCfg)) {
-            window._ftApplyingRemote = true;
-            try { localStorage.setItem('ft_alert_config', JSON.stringify(remotoCfg)); } catch(e) {}
-            window._ftApplyingRemote = false;
-            alertCfgAtualizado = true;
-          }
         }
 
         // Aplica dados remotos na UI (memória + re-render) para todas as chaves recebidas
@@ -7221,11 +7229,9 @@ var FIRESTORE_DOC_ID     = 'dados';
           if (typeof window._ftRecarregarEscalas === 'function') {
             try { window._ftRecarregarEscalas(); } catch(e) {}
           }
+          // Re-renderiza TODA a UI de alertas para refletir a config remota
           if (typeof window._ftAlertRender === 'function') {
-            var overlay = document.getElementById('ft-config-overlay');
-            if (overlay && overlay.style.display !== 'none') {
-              try { window._ftAlertRender(); } catch(e) {}
-            }
+            try { window._ftAlertRender(); } catch(e) {}
           }
           if (typeof window.updateHeaderBadge === 'function') {
             try { window.updateHeaderBadge(); } catch(e) {}
@@ -7242,7 +7248,7 @@ var FIRESTORE_DOC_ID     = 'dados';
             } else if (typeof window._ftUpdateBadge === 'function') {
               window._ftUpdateBadge();
             }
-          }, 400);
+          }, 500);
         }
 
         // ft_alert_config já tratado acima junto com ft_escalas_custom
@@ -8026,31 +8032,31 @@ var FIRESTORE_DOC_ID     = 'dados';
     catch (e) { return false; }
   }
   function setSnoozed(min) {
-    var ts = Date.now() + min * 60000;
-    try { localStorage.setItem(LS_SNOOZED, String(ts)); } catch (e) {}
+    var _ts = Date.now() + min * 60000;
+    try { localStorage.setItem(LS_SNOOZED, String(_ts)); } catch (e) {}
     // Propaga snooze para outros dispositivos via Firestore
     try {
       if (typeof firebase !== 'undefined') {
-        var _col = window.FIRESTORE_COLLECTION || 'folga_trabalhada';
-        var _did = window.FIRESTORE_DOC_ID     || 'dados';
-        firebase.firestore().collection(_col).doc(_did)
-          .set({ ft_alert_snoozed: ts }, { merge: true })
+        var _c = window.FIRESTORE_COLLECTION || 'folga_trabalhada';
+        var _d = window.FIRESTORE_DOC_ID     || 'dados';
+        firebase.firestore().collection(_c).doc(_d)
+          .set({ ft_alert_snoozed: _ts }, { merge: true })
           .catch(function(e){ console.warn('[SnoozeSync]', e); });
       }
-    } catch(e) {}
+    } catch(e2) {}
   }
   function clearSnoozed() {
     try { localStorage.removeItem(LS_SNOOZED); } catch (e) {}
-    // Propaga limpeza de snooze para outros dispositivos
+    // Propaga limpeza para outros dispositivos
     try {
       if (typeof firebase !== 'undefined') {
-        var _col = window.FIRESTORE_COLLECTION || 'folga_trabalhada';
-        var _did = window.FIRESTORE_DOC_ID     || 'dados';
-        firebase.firestore().collection(_col).doc(_did)
+        var _c = window.FIRESTORE_COLLECTION || 'folga_trabalhada';
+        var _d = window.FIRESTORE_DOC_ID     || 'dados';
+        firebase.firestore().collection(_c).doc(_d)
           .set({ ft_alert_snoozed: 0 }, { merge: true })
           .catch(function(e){ console.warn('[SnoozeClear]', e); });
       }
-    } catch(e) {}
+    } catch(e2) {}
   }
 
   /* ── Checagem principal ────────────────────────────────── */
@@ -8611,10 +8617,27 @@ var FIRESTORE_DOC_ID     = 'dados';
 
     setTimeout(scheduledCheck, 1500);
 
-    // Expõe scheduledCheck e checkAndAlert para o listener Firestore disparar sem esperar 60s
+    // Expõe funções internas ao listener Firestore e ao módulo de diagnóstico
     window._ftScheduledCheck  = scheduledCheck;
     window._ftCheckAndAlert   = checkAndAlert;
     window._ftUpdateBadge     = updateHeaderBadge;
+
+    // _ftAlertRender: re-renderiza toda a UI de alertas com a config atual do localStorage
+    window._ftAlertRender = function() {
+      try { renderConfigPostos();         } catch(e) {}
+      try { renderConfigPeriodos();       } catch(e) {}
+      try { renderCadAlertasPostos();     } catch(e) {}
+      try { renderCadAlertasToggles();    } catch(e) {}
+      try { renderBicoPostosMonitorados(); } catch(e) {}
+      try { updateHeaderBadge();          } catch(e) {}
+    };
+
+    // _ftRecarregarEscalas: recarrega escalas custom do localStorage para memória
+    window._ftRecarregarEscalas = function() {
+      try { carregarEscalasCustomNaMemoria(); } catch(e) {}
+      try { renderEscalaSelectPostos();       } catch(e) {}
+      try { updateHeaderBadge();              } catch(e) {}
+    };
 
     // Revalida quando a aba volta ao foco (usuário troca de app e volta)
     document.addEventListener('visibilitychange', function () {
@@ -8625,13 +8648,6 @@ var FIRESTORE_DOC_ID     = 'dados';
 
     // Editor de escalas
     initEscalaEditor();
-
-    // Expõe recarregamento de escalas para o listener Firestore
-    window._ftRecarregarEscalas = function() {
-      carregarEscalasCustomNaMemoria();
-      renderEscalaSelectPostos();
-      updateHeaderBadge();
-    };
 
     // Card de postos monitorados na aba Bico Fixo
     initBicoPostosMonitoradosCard();
@@ -9078,28 +9094,64 @@ window.diagSync = function () {
     .then(function(snap) {
       if (!snap.exists) {
         line('⚠️ Documento não existe no Firestore ainda', '#f7b731');
-      } else {
-        var data = snap.data();
-        if (data.ft_alert_config) {
-          var postos = (data.ft_alert_config.postos || []);
-          line('✅ Firestore tem ft_alert_config: ' + postos.length + ' posto(s): ' + postos.join(', '), '#26de81');
-        } else {
-          line('⚠️ Firestore NÃO tem ft_alert_config (campo ausente)', '#f7b731');
+        if (cfgLocal) {
+          line('🚀 Criando documento com config local...', '#00c8f8');
+          return db.collection(COL).doc(DOC).set({ ft_alert_config: cfgLocal }, { merge: true });
         }
+        return;
       }
+      var data = snap.data();
+
+      // Mostra config do Firestore
+      if (data.ft_alert_config) {
+        var postosFs = (data.ft_alert_config.postos || []);
+        line('☁️ Firestore ft_alert_config: ' + postosFs.length + ' posto(s): ' + postosFs.join(', '), '#26de81');
+      } else {
+        line('⚠️ Firestore NÃO tem ft_alert_config', '#f7b731');
+      }
+      if (data.ft_escalas_custom) {
+        line('☁️ Firestore ft_escalas_custom: ' + Object.keys(data.ft_escalas_custom).length + ' posto(s) com escala', '#26de81');
+      }
+
+      // Decide direção da sincronização:
+      // Se Firestore tem mais postos → puxa do Firestore (prioridade remota)
+      // Caso contrário → envia local para o Firestore
+      var postosLocal = (cfgLocal && cfgLocal.postos) ? cfgLocal.postos : [];
+      var postosRemoto = (data.ft_alert_config && data.ft_alert_config.postos) ? data.ft_alert_config.postos : [];
+
+      if (postosRemoto.length >= postosLocal.length && data.ft_alert_config) {
+        line('⬇️ Aplicando config do Firestore neste dispositivo...', '#00c8f8');
+        // Aplica config remota localmente SEM re-publicar no Firestore
+        window._ftApplyingRemote = true;
+        try { localStorage.setItem('ft_alert_config', JSON.stringify(data.ft_alert_config)); } catch(e2) {}
+        window._ftApplyingRemote = false;
+        if (data.ft_escalas_custom) {
+          try { localStorage.setItem('ft_escalas_custom', JSON.stringify(data.ft_escalas_custom)); } catch(e2) {}
+        }
+        if (typeof window._ftRecarregarEscalas === 'function') window._ftRecarregarEscalas();
+        if (typeof window._ftAlertRender === 'function') window._ftAlertRender();
+        line('✅ Config do Firestore aplicada localmente!', '#26de81');
+        return;
+      }
+
       if (!cfgLocal) {
         line('⏭ Sem config local para forçar envio', '#8b97b0'); return;
       }
-      line('🚀 Forçando gravação da config local no Firestore...', '#00c8f8');
-      return db.collection(COL).doc(DOC).set({ ft_alert_config: cfgLocal }, { merge: true });
+      line('⬆️ Enviando config local para o Firestore...', '#00c8f8');
+      var upd = { ft_alert_config: cfgLocal };
+      try {
+        var escLocal = JSON.parse(localStorage.getItem('ft_escalas_custom') || '{}');
+        if (Object.keys(escLocal).length > 0) upd['ft_escalas_custom'] = escLocal;
+      } catch(e2) {}
+      return db.collection(COL).doc(DOC).set(upd, { merge: true });
     })
     .then(function(r) {
       if (r === undefined) return;
-      line('✅ Gravado no Firestore! Outros dispositivos receberão via onSnapshot.', '#26de81');
+      line('✅ Firestore atualizado! Outros dispositivos receberão via onSnapshot.', '#26de81');
       if (typeof window._ftAlertRender === 'function') window._ftAlertRender();
     })
     .catch(function(e) {
-      line('❌ Erro ao gravar no Firestore: ' + e.message, '#fc5c65');
+      line('❌ Erro: ' + e.message, '#fc5c65');
       line('💡 Verifique as regras de segurança do Firestore', '#f7b731');
     });
 };
@@ -9210,8 +9262,8 @@ async function confirmarNovoCiclo() {
     });
 
     // Grava timestamp do início do novo ciclo (usado para suprimir alertas de datas anteriores)
-    var cicloTs = Date.now();
-    try { localStorage.setItem('ft_ciclo_inicio', String(cicloTs)); } catch(e) {}
+    var _cicloTs = Date.now();
+    try { localStorage.setItem('ft_ciclo_inicio', String(_cicloTs)); } catch(e) {}
     // Limpa snooze de alertas do ciclo anterior
     try { localStorage.removeItem('ft_alert_snoozed'); } catch(e) {}
 
@@ -9251,8 +9303,8 @@ async function confirmarNovoCiclo() {
       await db.collection(col).doc(doc).set({
         ft_registros:     [],
         ft_bico_fixo:     [],
-        ft_ciclo_inicio:  cicloTs,  // propaga para todos os dispositivos
-        ft_alert_snoozed: 0        // zera snooze em todos os dispositivos
+        ft_ciclo_inicio:  _cicloTs,  // propaga para todos os dispositivos
+        ft_alert_snoozed: 0          // zera snooze em todos os dispositivos
       }, { merge: true });   // merge: true preserva ft_colaboradores, ft_postos, ft_horarios_custom, ft_alert_config
 
       ncSetStatus('✅ Firestore limpo com sucesso!', '#26de81');
