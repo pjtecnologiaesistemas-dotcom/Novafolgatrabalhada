@@ -7074,6 +7074,12 @@ var FIRESTORE_DOC_ID     = 'dados';
         .catch(function (e) { console.warn('[AlertSync] Erro ao gravar config:', e); });
     };
 
+    // ── Dispara config que foi salva antes do Firebase conectar ──
+    if (window._ftAlertConfigPending) {
+      try { window._ftAlertConfigSync(window._ftAlertConfigPending); } catch(e) {}
+      window._ftAlertConfigPending = null;
+    }
+
     // ── Listener em tempo real (recebe mudanças de outros dispositivos) ──
     db.collection(FIRESTORE_COLLECTION)
       .doc(FIRESTORE_DOC_ID)
@@ -7098,7 +7104,21 @@ var FIRESTORE_DOC_ID     = 'dados';
               window._ftApplyingRemote = true;
               localStorage.setItem('ft_alert_config', JSON.stringify(remoto));
               window._ftApplyingRemote = false;
-              if (typeof window._ftAlertRender === 'function') window._ftAlertRender();
+              // Re-renderiza o modal de config se estiver aberto
+              if (typeof window._ftAlertRender === 'function') {
+                try { window._ftAlertRender(); } catch(e) {}
+              }
+              // Re-renderiza lista de postos no modal de configuração se estiver aberto
+              var overlay = document.getElementById('ft-config-overlay');
+              if (overlay && overlay.style.display !== 'none') {
+                if (typeof window._ftAlertRender === 'function') {
+                  try { window._ftAlertRender(); } catch(e) {}
+                }
+              }
+              // Atualiza badge do header com nova contagem de pendências
+              if (typeof window.updateHeaderBadge === 'function') {
+                try { window.updateHeaderBadge(); } catch(e) {}
+              }
             }
           } catch (e) { window._ftApplyingRemote = false; }
         }
@@ -7544,8 +7564,13 @@ var FIRESTORE_DOC_ID     = 'dados';
   function saveConfig(cfg) {
     try { localStorage.setItem(LS_CONFIG, JSON.stringify(cfg)); } catch (e) {}
     // Envia ao Firestore apenas quando mudança veio do usuário (não de snapshot remoto)
-    if (!window._ftApplyingRemote && typeof window._ftAlertConfigSync === 'function') {
-      try { window._ftAlertConfigSync(cfg); } catch (e) {}
+    if (!window._ftApplyingRemote) {
+      if (typeof window._ftAlertConfigSync === 'function') {
+        try { window._ftAlertConfigSync(cfg); } catch (e) {}
+      } else {
+        // Firebase ainda não conectou — guarda para enviar assim que conectar
+        window._ftAlertConfigPending = cfg;
+      }
     }
   }
 
