@@ -7088,12 +7088,21 @@ var FIRESTORE_DOC_ID     = 'dados';
         var data = doc.data();
 
         // Atualiza localStorage e IndexedDB com dados remotos
+        var registrosAtualizados = false;
         ['ft_registros', 'ft_colaboradores', 'ft_postos', 'ft_bico_fixo', 'ft_horarios_custom'].forEach(function (key) {
           if (data[key] !== undefined) {
             try { localStorage.setItem(key, JSON.stringify(data[key])); } catch (e) {}
             if (window.FT_Store) FT_Store.set(key, data[key]);
+            if (key === 'ft_registros' || key === 'ft_bico_fixo') registrosAtualizados = true;
           }
         });
+        // Reavalia pendências imediatamente quando registros mudam em outro dispositivo
+        if (registrosAtualizados) {
+          setTimeout(function () {
+            if (typeof window._ftScheduledCheck === 'function') window._ftScheduledCheck();
+            else if (typeof window.updateHeaderBadge === 'function') window.updateHeaderBadge();
+          }, 400);
+        }
 
         // Recebe config de alertas/postos monitorados de outros dispositivos
         if (data['ft_alert_config'] !== undefined) {
@@ -8448,6 +8457,16 @@ var FIRESTORE_DOC_ID     = 'dados';
     };
 
     setTimeout(scheduledCheck, 1500);
+
+    // Expõe scheduledCheck para o listener Firestore disparar sem esperar 60s
+    window._ftScheduledCheck = scheduledCheck;
+
+    // Revalida quando a aba volta ao foco (usuário troca de app e volta)
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') {
+        setTimeout(scheduledCheck, 300);
+      }
+    });
 
     // Editor de escalas
     initEscalaEditor();
