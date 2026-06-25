@@ -3574,6 +3574,7 @@
 
     colaboradores.push({ id: gerarId(), nome: nome });
     saveStorage(LS_COLAB, colaboradores);
+    if (window.SyncEngine) SyncEngine.flush();
     fillSelect('substituto',  colaboradores);
     fillSelect('quemFaltou',  colaboradores);
     fillSelect('substituido', colaboradores);
@@ -3592,6 +3593,7 @@
     if (!confirm('Remover colaborador "' + item.nome + '"?')) return;
     colaboradores = colaboradores.filter(function(c) { return c.id !== id; });
     saveStorage(LS_COLAB, colaboradores);
+    if (window.SyncEngine) SyncEngine.flush();
     fillSelect('substituto',  colaboradores);
     fillSelect('quemFaltou',  colaboradores);
     fillSelect('substituido', colaboradores);
@@ -3644,6 +3646,7 @@
 
     postos.push({ id: gerarId(), nome: nome });
     saveStorage(LS_POSTOS, postos);
+    if (window.SyncEngine) SyncEngine.flush();
     fillSelect('posto', postos);
     fillBicoSelects();
     fillDashSelect();
@@ -3660,6 +3663,7 @@
     if (!confirm('Remover posto "' + item.nome + '"?')) return;
     postos = postos.filter(function(p) { return p.id !== id; });
     saveStorage(LS_POSTOS, postos);
+    if (window.SyncEngine) SyncEngine.flush();
     fillSelect('posto', postos);
     fillBicoSelects();
     fillDashSelect();
@@ -4453,6 +4457,7 @@
         return c.id === id ? { id: c.id, nome: novoNome } : c;
       });
       saveStorage(LS_COLAB, colaboradores);
+      if (window.SyncEngine) SyncEngine.flush();
       fillSelect('substituto',  colaboradores);
       fillSelect('quemFaltou',  colaboradores);
       fillSelect('substituido', colaboradores);
@@ -6251,6 +6256,7 @@
       }
       postos.push({ id: gerarId(), nome: nome });
       saveStorage(LS_POSTOS, postos);
+      if (window.SyncEngine) SyncEngine.flush();
       fillSelect('posto', postos);
       fillBicoSelects();
       fillDashSelect();
@@ -6996,6 +7002,68 @@
     if (!fromSnapshot) showToast('☁️ Dados sincronizados com Firebase!', 'success');
   };
 
+  // ── Sincronização remota em tempo real ───────────
+  // Chamado pelo onSnapshot quando dados chegam de outro dispositivo.
+  // Recarrega variáveis em memória e re-renderiza toda a UI afetada.
+  window._ftAplicarDadosRemotos = function(chaves) {
+    var atualizou = { colab: false, postos: false, registros: false, bico: false, horarios: false };
+
+    chaves.forEach(function(key) {
+      if (key === 'ft_colaboradores') {
+        // Recarrega array em memória
+        try { colaboradores = JSON.parse(localStorage.getItem('ft_colaboradores') || '[]'); } catch(e) {}
+        atualizou.colab = true;
+      }
+      if (key === 'ft_postos') {
+        try { postos = JSON.parse(localStorage.getItem('ft_postos') || '[]'); } catch(e) {}
+        atualizou.postos = true;
+      }
+      if (key === 'ft_registros') atualizou.registros = true;
+      if (key === 'ft_bico_fixo')  atualizou.bico      = true;
+      if (key === 'ft_horarios_custom') atualizou.horarios = true;
+    });
+
+    // Re-renderiza selects e listas de cadastro se houve mudança
+    if (atualizou.colab) {
+      fillSelect('substituto',  colaboradores);
+      fillSelect('quemFaltou',  colaboradores);
+      fillSelect('substituido', colaboradores);
+      renderColaboradoresList();
+    }
+    if (atualizou.postos) {
+      fillSelect('posto', postos);
+      renderPostosList();
+    }
+    if (atualizou.colab || atualizou.postos || atualizou.bico) {
+      fillBicoSelects();
+    }
+    if (atualizou.colab || atualizou.postos) {
+      fillDashSelect();
+      fillGeralSelects();
+    }
+    if (atualizou.horarios) {
+      // Re-injeta horários custom nos selects
+      if (typeof injetarHorariosCustomNosSelects === 'function') {
+        try { injetarHorariosCustomNosSelects(); } catch(e) {}
+      }
+    }
+
+    // Re-renderiza abas visíveis
+    if (atualizou.registros || atualizou.bico || atualizou.colab || atualizou.postos) {
+      var histTab  = document.getElementById('tab-historico');
+      var dashTab  = document.getElementById('tab-dashboard');
+      var geralTab = document.getElementById('tab-geral');
+      var bicoTab  = document.getElementById('tab-bico');
+
+      if (histTab  && !histTab.classList.contains('hidden'))  renderHistorico();
+      if (dashTab  && !dashTab.classList.contains('hidden'))  renderDashboard();
+      if (geralTab && !geralTab.classList.contains('hidden')) renderGeralList();
+      if (bicoTab  && !bicoTab.classList.contains('hidden') && typeof renderBicoList === 'function') {
+        try { renderBicoList(); } catch(e) {}
+      }
+    }
+  };
+
 }());
 </script>
 
@@ -7080,6 +7148,18 @@ var FIRESTORE_DOC_ID     = 'dados';
       window._ftAlertConfigPending = null;
     }
 
+    // ── Dispara ft_escalas_custom pendente (salva antes do Firebase conectar) ──
+    if (window._ftEscalaCustomPending) {
+      try {
+        var col = FIRESTORE_COLLECTION || 'folga_trabalhada';
+        var did = FIRESTORE_DOC_ID     || 'dados';
+        db.collection(col).doc(did)
+          .set({ ft_escalas_custom: window._ftEscalaCustomPending }, { merge: true })
+          .catch(function(e){ console.warn('[EscalaSync pending]', e); });
+        window._ftEscalaCustomPending = null;
+      } catch(e) {}
+    }
+
     // ── Listener em tempo real (recebe mudanças de outros dispositivos) ──
     db.collection(FIRESTORE_COLLECTION)
       .doc(FIRESTORE_DOC_ID)
@@ -7088,49 +7168,63 @@ var FIRESTORE_DOC_ID     = 'dados';
         var data = doc.data();
 
         // Atualiza localStorage e IndexedDB com dados remotos
-        var registrosAtualizados = false;
-        ['ft_registros', 'ft_colaboradores', 'ft_postos', 'ft_bico_fixo', 'ft_horarios_custom'].forEach(function (key) {
+        var chavesAtualizadas   = [];
+        var escalasAtualizadas  = false;
+        var alertCfgAtualizado  = false;
+
+        ['ft_registros', 'ft_colaboradores', 'ft_postos', 'ft_bico_fixo',
+         'ft_horarios_custom', 'ft_escalas_custom'].forEach(function (key) {
           if (data[key] !== undefined) {
             try { localStorage.setItem(key, JSON.stringify(data[key])); } catch (e) {}
             if (window.FT_Store) FT_Store.set(key, data[key]);
-            if (key === 'ft_registros' || key === 'ft_bico_fixo') registrosAtualizados = true;
+            chavesAtualizadas.push(key);
+            if (key === 'ft_escalas_custom') escalasAtualizadas = true;
           }
         });
-        // Reavalia pendências imediatamente quando registros mudam em outro dispositivo
-        if (registrosAtualizados) {
+
+        // Sincroniza ft_alert_config
+        if (data['ft_alert_config'] !== undefined) {
+          var remotoCfg = data['ft_alert_config'];
+          var localCfg  = null;
+          try { localCfg = JSON.parse(localStorage.getItem('ft_alert_config') || 'null'); } catch(e) {}
+          if (JSON.stringify(remotoCfg) !== JSON.stringify(localCfg)) {
+            window._ftApplyingRemote = true;
+            try { localStorage.setItem('ft_alert_config', JSON.stringify(remotoCfg)); } catch(e) {}
+            window._ftApplyingRemote = false;
+            alertCfgAtualizado = true;
+          }
+        }
+
+        // Aplica dados remotos na UI (memória + re-render) para todas as chaves recebidas
+        if (chavesAtualizadas.length > 0 && typeof window._ftAplicarDadosRemotos === 'function') {
+          try { window._ftAplicarDadosRemotos(chavesAtualizadas); } catch(e) {}
+        }
+
+        // Recarrega ESCALAS_POSTOS em memória quando escalas ou config chegam do Firestore
+        if (escalasAtualizadas || alertCfgAtualizado) {
+          if (typeof window._ftRecarregarEscalas === 'function') {
+            try { window._ftRecarregarEscalas(); } catch(e) {}
+          }
+          if (typeof window._ftAlertRender === 'function') {
+            var overlay = document.getElementById('ft-config-overlay');
+            if (overlay && overlay.style.display !== 'none') {
+              try { window._ftAlertRender(); } catch(e) {}
+            }
+          }
+          if (typeof window.updateHeaderBadge === 'function') {
+            try { window.updateHeaderBadge(); } catch(e) {}
+          }
+        }
+
+        // Reavalia alertas imediatamente quando dados mudam
+        if (chavesAtualizadas.length > 0 || escalasAtualizadas || alertCfgAtualizado) {
           setTimeout(function () {
             if (typeof window._ftScheduledCheck === 'function') window._ftScheduledCheck();
             else if (typeof window.updateHeaderBadge === 'function') window.updateHeaderBadge();
           }, 400);
         }
 
-        // Recebe config de alertas/postos monitorados de outros dispositivos
-        if (data['ft_alert_config'] !== undefined) {
-          try {
-            var remoto = data['ft_alert_config'];
-            var local  = JSON.parse(localStorage.getItem('ft_alert_config') || 'null');
-            if (JSON.stringify(remoto) !== JSON.stringify(local)) {
-              window._ftApplyingRemote = true;
-              localStorage.setItem('ft_alert_config', JSON.stringify(remoto));
-              window._ftApplyingRemote = false;
-              // Re-renderiza o modal de config se estiver aberto
-              if (typeof window._ftAlertRender === 'function') {
-                try { window._ftAlertRender(); } catch(e) {}
-              }
-              // Re-renderiza lista de postos no modal de configuração se estiver aberto
-              var overlay = document.getElementById('ft-config-overlay');
-              if (overlay && overlay.style.display !== 'none') {
-                if (typeof window._ftAlertRender === 'function') {
-                  try { window._ftAlertRender(); } catch(e) {}
-                }
-              }
-              // Atualiza badge do header com nova contagem de pendências
-              if (typeof window.updateHeaderBadge === 'function') {
-                try { window.updateHeaderBadge(); } catch(e) {}
-              }
-            }
-          } catch (e) { window._ftApplyingRemote = false; }
-        }
+        // ft_alert_config já tratado acima junto com ft_escalas_custom
 
         // Notifica a UI (fromSnapshot=true para não exibir toast)
         if (typeof window.onSyncComplete === 'function') {
@@ -8120,6 +8214,23 @@ var FIRESTORE_DOC_ID     = 'dados';
     saveEscalasCustom(custom);
     // Atualiza ESCALAS_POSTOS em memória
     ESCALAS_POSTOS[postoNome] = { semana: semana };
+    // Sincroniza ft_escalas_custom com Firestore para outros dispositivos
+    if (typeof window._ftAlertConfigSync === 'function') {
+      // Reutiliza a bridge para gravar ft_escalas_custom junto
+      try {
+        var upd = { ft_escalas_custom: custom };
+        var col = window.FIRESTORE_COLLECTION || 'folga_trabalhada';
+        var did = window.FIRESTORE_DOC_ID     || 'dados';
+        if (typeof firebase !== 'undefined') {
+          firebase.firestore().collection(col).doc(did)
+            .set(upd, { merge: true })
+            .catch(function(e){ console.warn('[EscalaSync]', e); });
+        }
+      } catch(e) {}
+    } else {
+      // Firebase ainda não conectou — enfileira para envio posterior
+      window._ftEscalaCustomPending = loadEscalasCustom();
+    }
   }
 
   function adicionarTurnoEscala(postoNome) {
@@ -8850,6 +8961,13 @@ var FIRESTORE_DOC_ID     = 'dados';
     if (typeof renderConfigPostos          === 'function') renderConfigPostos();
     if (typeof renderCadAlertasPostos      === 'function') renderCadAlertasPostos();
     if (typeof renderBicoPostosMonitorados === 'function') renderBicoPostosMonitorados();
+  };
+
+  // Expõe recarga de escalas para o onSnapshot recarregar ESCALAS_POSTOS em memória
+  window._ftRecarregarEscalas = function () {
+    if (typeof carregarEscalasCustomNaMemoria === 'function') {
+      carregarEscalasCustomNaMemoria();
+    }
   };
 
   if (document.readyState === 'loading') {
