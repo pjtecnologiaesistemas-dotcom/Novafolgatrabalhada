@@ -9849,7 +9849,14 @@ window.diagSync = function () {
       var escRemoto = window._ftDecodeEscalas(escRemotoRaw);
       var escMesclado = mergeEscalasCustom(escLocal, escRemoto);
       upd[MAPA] = window._ftEncodeEscalas(escMesclado);
+      // BUG CORRIGIDO: sem isto, o campo _ts no Firestore ficava parado no
+      // valor antigo (merge:true não atualiza um campo que não é enviado).
+      // O dispositivo que recebe o snapshot compara os timestamps para
+      // decidir se aplica o dado remoto — com o _ts desatualizado, a
+      // escala nova era ignorada mesmo chegando corretamente ao Firestore.
+      upd[MAPA + '_ts'] = Date.now();
       gravarLocal(MAPA, escMesclado);
+      try { localStorage.setItem(MAPA + '_ts', String(upd[MAPA + '_ts'])); } catch (e) {}
       line('🔀 ' + MAPA + ': ' + Object.keys(escMesclado).length + ' posto(s) com escala customizada', '#26de81');
 
       // ── Mescla config de alertas ──
@@ -9857,9 +9864,12 @@ window.diagSync = function () {
       var cfgRemoto = (data[CFG] && typeof data[CFG] === 'object') ? data[CFG] : {};
       var cfgMesclado = mergeAlertConfig(cfgLocal, cfgRemoto);
       upd[CFG] = cfgMesclado;
+      // BUG CORRIGIDO: mesmo motivo acima, agora para a lista de postos monitorados.
+      upd[CFG + '_ts'] = Date.now();
       window._ftApplyingRemote = true;
       gravarLocal(CFG, cfgMesclado);
       window._ftApplyingRemote = false;
+      try { localStorage.setItem(CFG + '_ts', String(upd[CFG + '_ts'])); } catch (e) {}
       line('🔀 ' + CFG + ': ' + cfgMesclado.postos.length + ' posto(s) monitorado(s): ' + cfgMesclado.postos.join(', '), '#26de81');
 
       line('⬆️ Gravando dados mesclados no Firestore (todos os dispositivos vão receber)...', '#00c8f8');
