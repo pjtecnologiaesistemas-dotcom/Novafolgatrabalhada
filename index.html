@@ -7137,6 +7137,49 @@ var FIREBASE_CONFIG = {
 var FIRESTORE_COLLECTION = 'folga_trabalhada';
 var FIRESTORE_DOC_ID     = 'dados';
 
+// ── CORREÇÃO DE BUG: Firestore não aceita "arrays dentro de arrays" ──────
+//    ft_escalas_custom é um mapa { posto: semana }, onde semana é um array
+//    de 7 posições (um por dia da semana) e cada posição é, por sua vez,
+//    um array de turnos. Isso é um ARRAY DE ARRAYS, que o Firestore rejeita
+//    com o erro "Function DocumentReference.set() called with invalid data.
+//    Nested arrays are not supported". Era esse erro que impedia postos
+//    novos (com escala customizada, ex.: sem escala hardcoded em
+//    ESCALAS_POSTOS) de sincronizar entre dispositivos — a gravação no
+//    Firestore falhava silenciosamente (só aparecia no log de Diagnóstico).
+//    Solução: antes de gravar no Firestore, cada dia (array de turnos) é
+//    "embrulhado" em um objeto { turnos: [...] } — trocando um array de
+//    ARRAYS por um array de MAPS, que o Firestore aceita normalmente. Ao
+//    ler de volta do Firestore, desembrulhamos para o formato original.
+window._ftEncodeEscalas = function (custom) {
+  var out = {};
+  if (custom && typeof custom === 'object') {
+    for (var posto in custom) {
+      var semana = Array.isArray(custom[posto]) ? custom[posto] : [];
+      out[posto] = semana.map(function (turnosDoDia) {
+        return { turnos: Array.isArray(turnosDoDia) ? turnosDoDia : [] };
+      });
+    }
+  }
+  return out;
+};
+window._ftDecodeEscalas = function (encoded) {
+  var out = {};
+  if (encoded && typeof encoded === 'object') {
+    for (var posto in encoded) {
+      var semana = encoded[posto];
+      if (Array.isArray(semana)) {
+        out[posto] = semana.map(function (dia) {
+          if (Array.isArray(dia)) return dia; // compat: formato antigo já era array
+          return (dia && Array.isArray(dia.turnos)) ? dia.turnos : [];
+        });
+      } else {
+        out[posto] = [];
+      }
+    }
+  }
+  return out;
+};
+
 // Stubs — substituídos por implementações reais após Firebase conectar.
 // Evitam "window._ftSalvarEscalaFirebase is not a function" durante carregamento.
 window._ftSalvarEscalaFirebase = function(custom, ts) {
@@ -7258,7 +7301,7 @@ window._ftSalvarAlertConfigFirebase = function(cfg, ts) {
       try {
         var col = FIRESTORE_COLLECTION || 'folga_trabalhada';
         var did = FIRESTORE_DOC_ID     || 'dados';
-        var updEsc = { ft_escalas_custom: window._ftEscalaCustomPending };
+        var updEsc = { ft_escalas_custom: window._ftEncodeEscalas(window._ftEscalaCustomPending) };
         if (window._ftEscalaCustomPendingTs) updEsc['ft_escalas_custom_ts'] = window._ftEscalaCustomPendingTs;
         db.collection(col).doc(did)
           .set(updEsc, { merge: true })
@@ -7301,9 +7344,10 @@ window._ftSalvarAlertConfigFirebase = function(cfg, ts) {
           var remoteTsEsc = parseInt(data['ft_escalas_custom_ts'] || 0, 10) || 0;
           var localTsEsc  = parseInt(localStorage.getItem('ft_escalas_custom_ts') || '0', 10) || 0;
           if (remoteTsEsc > localTsEsc) {  // FIX: > evita snapshot sobrescrever edição local com mesmo ts
-            try { localStorage.setItem('ft_escalas_custom', JSON.stringify(data['ft_escalas_custom'])); } catch (e) {}
+            var _escDecoded = window._ftDecodeEscalas(data['ft_escalas_custom']);
+            try { localStorage.setItem('ft_escalas_custom', JSON.stringify(_escDecoded)); } catch (e) {}
             try { localStorage.setItem('ft_escalas_custom_ts', String(remoteTsEsc)); } catch (e) {}
-            if (window.FT_Store) FT_Store.set('ft_escalas_custom', data['ft_escalas_custom']);
+            if (window.FT_Store) FT_Store.set('ft_escalas_custom', _escDecoded);
             chavesAtualizadas.push('ft_escalas_custom');
             escalasAtualizadas = true;
           }
@@ -7401,7 +7445,7 @@ window._ftSalvarAlertConfigFirebase = function(cfg, ts) {
         var col = window.FIRESTORE_COLLECTION || 'folga_trabalhada';
         var did = window.FIRESTORE_DOC_ID     || 'dados';
         db.collection(col).doc(did)
-          .set({ ft_escalas_custom: custom, ft_escalas_custom_ts: ts || Date.now() }, { merge: true })
+          .set({ ft_escalas_custom: window._ftEncodeEscalas(custom), ft_escalas_custom_ts: ts || Date.now() }, { merge: true })
           .then(function() {
             console.log('[EscalaSync] ✅ Escala salva no Firebase');
             if (typeof window.showToast === 'function') window.showToast('☁️ Escala salva no Firebase!', 'success');
@@ -8676,7 +8720,7 @@ window._ftSalvarAlertConfigFirebase = function(cfg, ts) {
     // ── Enfileira também na fila (fallback/offline) ──────────────────
     if (window.FT_SyncQueue) {
       FT_SyncQueue.enqueue('set', '__escalas_payload__',
-        { ft_escalas_custom: custom, ft_escalas_custom_ts: _ts }
+        { ft_escalas_custom: window._ftEncodeEscalas(custom), ft_escalas_custom_ts: _ts }
       ).then(function() {
         if (window.SyncEngine) SyncEngine.flush();
       });
@@ -8823,7 +8867,7 @@ window._ftSalvarAlertConfigFirebase = function(cfg, ts) {
         window._ftSalvarEscalaFirebase(custom, _tsLimpar);
         if (window.FT_SyncQueue) {
           FT_SyncQueue.enqueue('set', '__escalas_payload__',
-            { ft_escalas_custom: custom, ft_escalas_custom_ts: _tsLimpar }
+            { ft_escalas_custom: window._ftEncodeEscalas(custom), ft_escalas_custom_ts: _tsLimpar }
           ).then(function() {
             if (window.SyncEngine) SyncEngine.flush();
           });
@@ -9801,9 +9845,10 @@ window.diagSync = function () {
 
       // ── Mescla escalas customizadas ──
       var escLocal  = lerLocal(MAPA, true);
-      var escRemoto = (data[MAPA] && typeof data[MAPA] === 'object') ? data[MAPA] : {};
+      var escRemotoRaw = (data[MAPA] && typeof data[MAPA] === 'object') ? data[MAPA] : {};
+      var escRemoto = window._ftDecodeEscalas(escRemotoRaw);
       var escMesclado = mergeEscalasCustom(escLocal, escRemoto);
-      upd[MAPA] = escMesclado;
+      upd[MAPA] = window._ftEncodeEscalas(escMesclado);
       gravarLocal(MAPA, escMesclado);
       line('🔀 ' + MAPA + ': ' + Object.keys(escMesclado).length + ' posto(s) com escala customizada', '#26de81');
 
