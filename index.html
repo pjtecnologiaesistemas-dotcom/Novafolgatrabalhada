@@ -7518,6 +7518,7 @@ var FIRESTORE_DOC_ID     = 'dados';
               ✔ Salvar
             </button>
           </div>
+          <div id="ft-escala-aviso-inline" style="display:none;font-size:.75rem;color:#fc5c65;font-weight:700;margin-bottom:8px;"></div>
           <div style="font-size:.72rem;color:#8b97b0;">💡 Saída após meia-noite (ex: 18:00→06:00) é detectada automaticamente.</div>
         </div>
 
@@ -8174,11 +8175,14 @@ var FIRESTORE_DOC_ID     = 'dados';
     try { localStorage.setItem(LS_ESCALAS_CUSTOM, JSON.stringify(obj)); } catch(e) {}
   }
 
-  // Converte string "HH:MM" em minutos
+  // Converte string "HH:MM" em minutos (tolera espaços e ":" largo de alguns teclados)
   function horaParaMin(str) {
-    var m = String(str || '').match(/^(\d{1,2}):(\d{2})$/);
+    var s = String(str || '').trim().replace(/：/g, ':').replace(/\s+/g, '');
+    var m = s.match(/^(\d{1,2}):(\d{2})$/);
     if (!m) return -1;
-    return parseInt(m[1],10)*60 + parseInt(m[2],10);
+    var hh = parseInt(m[1],10), mm = parseInt(m[2],10);
+    if (hh > 23 || mm > 59) return -1;
+    return hh*60 + mm;
   }
 
   // Mescla ESCALAS_POSTOS hardcoded com as customizadas do localStorage
@@ -8333,12 +8337,18 @@ var FIRESTORE_DOC_ID     = 'dados';
     var periodo = periodoEl.value;
 
     if (eMin < 0) {
-      if (typeof window.showToast === 'function') window.showToast('⚠️ Hora de entrada inválida. Use HH:MM.', 'error');
+      var msgE = '⚠️ Hora de entrada inválida. Use HH:MM (ex: 18:00).';
+      if (typeof window.showToast === 'function') window.showToast(msgE, 'error');
+      var avisoE = document.getElementById('ft-escala-aviso-inline');
+      if (avisoE) { avisoE.textContent = msgE; avisoE.style.display = 'block'; }
       entradaEl.style.borderColor = '#fc5c65'; setTimeout(function(){ entradaEl.style.borderColor=''; }, 2000);
       return;
     }
     if (sMin < 0) {
-      if (typeof window.showToast === 'function') window.showToast('⚠️ Hora de saída inválida. Use HH:MM.', 'error');
+      var msgS = '⚠️ Hora de saída inválida. Use HH:MM (ex: 06:00).';
+      if (typeof window.showToast === 'function') window.showToast(msgS, 'error');
+      var avisoS = document.getElementById('ft-escala-aviso-inline');
+      if (avisoS) { avisoS.textContent = msgS; avisoS.style.display = 'block'; }
       saidaEl.style.borderColor = '#fc5c65'; setTimeout(function(){ saidaEl.style.borderColor=''; }, 2000);
       return;
     }
@@ -8352,6 +8362,8 @@ var FIRESTORE_DOC_ID     = 'dados';
     saidaEl.value   = '';
     renderEscalaDiasList(postoNome);
     updateHeaderBadge();
+    var avisoOk = document.getElementById('ft-escala-aviso-inline');
+    if (avisoOk) avisoOk.style.display = 'none';
     if (typeof window.showToast === 'function') window.showToast('✅ Turno adicionado!', 'success');
   }
 
@@ -8367,21 +8379,47 @@ var FIRESTORE_DOC_ID     = 'dados';
   function initEscalaEditor() {
     renderEscalaSelectPostos();
 
-    // Garante que o turno/escala editados batem com o posto atualmente
-    // selecionado no dropdown, evitando salvar/apagar no posto errado
-    // caso o usuário troque a seleção sem clicar em "✏️ Editar" de novo.
-    function getPostoEmEdicaoValidado() {
-      if (!_escalaPosToEdit) {
-        if (typeof window.showToast === 'function') window.showToast('⚠️ Selecione um posto e clique em "✏️ Editar" antes.', 'error');
-        return null;
+    // Mostra um aviso visível (não só toast, que pode passar despercebido)
+    // logo abaixo do botão de Adicionar Turno.
+    function avisoEscala(msg) {
+      if (typeof window.showToast === 'function') window.showToast(msg, 'error');
+      var el = document.getElementById('ft-escala-aviso-inline');
+      if (el) {
+        el.textContent = msg;
+        el.style.display = 'block';
+        clearTimeout(el._hideTimer);
+        el._hideTimer = setTimeout(function(){ el.style.display = 'none'; }, 4000);
       }
+    }
+
+    // Garante que o turno/escala editados batem com o posto atualmente
+    // selecionado no dropdown. Em vez de bloquear silenciosamente quando o
+    // estado interno (_escalaPosToEdit) está desatualizado, agora usa o
+    // valor atual do <select> como fonte da verdade e resincroniza sozinho.
+    function getPostoEmEdicaoValidado() {
       var selEl = document.getElementById('ft-escala-select-posto');
       var selecionado = (selEl && selEl.value) || '';
-      if (selecionado && norm(selecionado) !== norm(_escalaPosToEdit)) {
-        if (typeof window.showToast === 'function') window.showToast('⚠️ O posto selecionado mudou. Clique em "✏️ Editar" novamente antes de salvar.', 'error');
+
+      // Se o editor não foi aberto ainda, mas já existe um posto selecionado
+      // no dropdown, abre o editor automaticamente para esse posto.
+      if (!_escalaPosToEdit && selecionado) {
+        renderEscalaDiasList(selecionado);
+        return _escalaPosToEdit || selecionado;
+      }
+
+      if (!_escalaPosToEdit && !selecionado) {
+        avisoEscala('⚠️ Selecione um posto antes de adicionar o turno.');
         return null;
       }
-      return _escalaPosToEdit;
+
+      // Se o usuário trocou o posto no dropdown sem clicar em "Editar" de
+      // novo, resincroniza automaticamente para o posto selecionado.
+      if (selecionado && norm(selecionado) !== norm(_escalaPosToEdit)) {
+        renderEscalaDiasList(selecionado);
+        return selecionado;
+      }
+
+      return _escalaPosToEdit || selecionado;
     }
 
     var btnVer = document.getElementById('ft-escala-btn-ver');
