@@ -7345,9 +7345,23 @@ window._ftSalvarAlertConfigFirebase = function(cfg, ts) {
           var localTsEsc  = parseInt(localStorage.getItem('ft_escalas_custom_ts') || '0', 10) || 0;
           if (remoteTsEsc > localTsEsc) {  // FIX: > evita snapshot sobrescrever edição local com mesmo ts
             var _escDecoded = window._ftDecodeEscalas(data['ft_escalas_custom']);
-            try { localStorage.setItem('ft_escalas_custom', JSON.stringify(_escDecoded)); } catch (e) {}
+            // BUG CORRIGIDO: antes isto SUBSTITUÍA o mapa inteiro de escalas
+            // pelo valor remoto. Como o timestamp é único para o mapa todo,
+            // uma edição em QUALQUER outro posto, feita em outro dispositivo/
+            // aba que ainda não tivesse recebido um posto novo adicionado
+            // aqui, apagava esse posto ao chegar (mesmo tendo um timestamp
+            // "mais novo" só por causa da OUTRA edição). Agora mescla por
+            // união (mesma lógica seguIDA pelo botão Diagnóstico) em vez de
+            // substituir — nenhum posto local é perdido só porque um
+            // snapshot mais novo chegou sobre um posto diferente.
+            var _escAtualLocal = null;
+            try { _escAtualLocal = JSON.parse(localStorage.getItem('ft_escalas_custom') || '{}'); } catch(e) {}
+            var _escFinal = (typeof window._ftMergeEscalasCustom === 'function')
+              ? window._ftMergeEscalasCustom(_escAtualLocal || {}, _escDecoded)
+              : _escDecoded; // fallback (não deveria ocorrer — função é registrada no load)
+            try { localStorage.setItem('ft_escalas_custom', JSON.stringify(_escFinal)); } catch (e) {}
             try { localStorage.setItem('ft_escalas_custom_ts', String(remoteTsEsc)); } catch (e) {}
-            if (window.FT_Store) FT_Store.set('ft_escalas_custom', _escDecoded);
+            if (window.FT_Store) FT_Store.set('ft_escalas_custom', _escFinal);
             chavesAtualizadas.push('ft_escalas_custom');
             escalasAtualizadas = true;
           }
@@ -7372,8 +7386,17 @@ window._ftSalvarAlertConfigFirebase = function(cfg, ts) {
                           !== JSON.stringify(((localCfg||{}).postos||[]).slice().sort());
           var outroCampo  = JSON.stringify(remotoCfg) !== JSON.stringify(localCfg);
           if (postosDifere || outroCampo) {
+            // BUG CORRIGIDO: antes isto gravava o objeto remoto inteiro por
+            // cima do local. Mesma causa do bug de escalas acima: timestamp
+            // único para a config inteira faz uma edição feita em outro
+            // dispositivo/aba (ex.: ligar/desligar um alerta) apagar um posto
+            // recém-adicionado aqui, se aquele outro lugar ainda não tinha
+            // recebido a adição. Agora mescla os postos por união.
+            var _cfgFinal = (typeof window._ftMergeAlertConfig === 'function')
+              ? window._ftMergeAlertConfig(localCfg || {}, remotoCfg)
+              : remotoCfg; // fallback (não deveria ocorrer — função é registrada no load)
             window._ftApplyingRemote = true;
-            try { localStorage.setItem('ft_alert_config', remotoRaw); } catch(e) {}
+            try { localStorage.setItem('ft_alert_config', JSON.stringify(_cfgFinal)); } catch(e) {}
             window._ftApplyingRemote = false;
             alertCfgAtualizado = true;
           }
@@ -9781,6 +9804,22 @@ window.diagSync = function () {
       postosEscalaDia:     mergeMapas(local.postosEscalaDia,     remoto.postosEscalaDia)
     };
   }
+
+  // ── Expõe as mesclagens seguras (união, nunca substituição total) para o
+  //    listener onSnapshot em tempo real (definido em outro IIFE, mais acima
+  //    no arquivo). BUG CORRIGIDO: o listener em tempo real aplicava os dados
+  //    remotos com uma SUBSTITUIÇÃO TOTAL do objeto (localStorage.setItem com
+  //    o valor remoto inteiro) sempre que o timestamp remoto era mais novo.
+  //    Isso é seguro só quando o timestamp cobre exatamente o que mudou — mas
+  //    como o timestamp é ÚNICO para o mapa inteiro (todos os postos), uma
+  //    edição feita em QUALQUER outro posto, em QUALQUER outro dispositivo/aba
+  //    que ainda não tivesse recebido a adição mais recente, sobrescrevia (e
+  //    apagava) o posto recém-adicionado em todos os aparelhos — mesmo sem
+  //    ninguém tocar nele. Expondo a mesma mesclagem por união usada aqui no
+  //    Diagnóstico, o listener passa a nunca mais descartar dados só porque
+  //    chegaram "depois" de uma edição feita em outro lugar.
+  window._ftMergeEscalasCustom = mergeEscalasCustom;
+  window._ftMergeAlertConfig   = mergeAlertConfig;
 
   function lerLocal(key, isMapa) {
     try { return JSON.parse(localStorage.getItem(key) || (isMapa ? '{}' : '[]')); }
